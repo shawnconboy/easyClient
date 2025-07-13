@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Company Details</title>
+    <link rel="stylesheet" href="style.css" />
+    <style>
+        .card {
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+            padding: 2rem 2.5rem;
+            margin-top: 2rem;
+            max-width: 800px;
+            width: 500px;
+        }
+
+        .card h2 {
+            margin-top: 0;
+            margin-bottom: 1.2rem;
+            font-size: 1.3rem;
+            font-weight: 600;
+        }
+
+        .services-list {
+            list-style: none;
+            padding: 0;
+            margin: 0 0 2rem 0;
+        }
+
+        .services-list li {
+            padding: 0.7rem 0;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            font-size: 1rem;
+        }
+
+        .services-list li:last-child {
+            border-bottom: none;
+        }
+
+        .company-hours {
+            margin-top: 1.5rem;
+            font-size: 1.05rem;
+            color: #555;
+        }
+
+        #company-name {
+            margin-bottom: 0.5rem;
+            font-size: 2rem;
+            font-weight: 700;
+            letter-spacing: -1px;
+        }
+
+        .content {
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 70vh;
+            padding-top: 2rem;
+            padding-bottom: 2rem;
+        }
+
+        @media (max-width: 600px) {
+            .card {
+                padding: 1rem;
+                max-width: 100%;
+            }
+
+            #company-name {
+                font-size: 1.3rem;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <aside class="sidebar">
+            <h2>Easy Client</h2>
+            <nav>
+                <a href="index.html">Dashboard</a>
+                <a href="companies.html">Companies</a>
+                <a href="#">Users</a>
+                <a href="#">Settings</a>
+            </nav>
+        </aside>
+        <main class="main">
+            <header class="topbar">
+                <h1 id="company-name">Company Details</h1>
+                <div class="user-box">Admin</div>
+            </header>
+            <section class="content" id="company-details">
+                <!-- Details will be rendered here -->
+            </section>
+        </main>
+    </div>
+    <script>
+        function getCompanyId() {
+            const params = new URLSearchParams(window.location.search);
+            return params.get('id');
+        }
+        fetch('companies.json')
+            .then(response => response.json())
+            .then(data => {
+                const id = parseInt(getCompanyId());
+                const company = data.find(c => c.id === id);
+                if (!company) {
+                    document.getElementById('company-details').innerHTML = '<p>Company not found.</p>';
+                    return;
+                }
+                document.getElementById('company-name').textContent = company.name;
+                let servicesHtml = '<ul class="services-list">';
+                company.services.forEach(service => {
+                    servicesHtml += `<li><span>${service}</span><span>${company.prices[service]}</span></li>`;
+                });
+                servicesHtml += '</ul>';
+                document.getElementById('company-details').innerHTML = `
+                    <div class="card">
+                        <h2>Services & Prices</h2>
+                        ${servicesHtml}
+                        <div class="company-hours">
+                            <h2 style="margin-bottom:0.5rem;">Hours of Operation</h2>
+                            <p style="margin:0;">${company.hours}</p>
+                        </div>
+                    </div>
+                `;
+            });
+    </script>
+</body>
+
+</html>

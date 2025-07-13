@@ -1,0 +1,50 @@
+[
+    {
+        "id": 1,
+        "name": "Better Lawn Co. LLC",
+        "owner": "David Ortiz",
+        "services": [
+            "Lawn Mowing",
+            "Edging",
+            "Fertilizing"
+        ],
+        "prices": {
+            "Lawn Mowing": "$30",
+            "Edging": "$15",
+            "Fertilizing": "$25"
+        },
+        "hours": "Mon-Fri 8am-6pm"
+    },
+    {
+        "id": 2,
+        "name": "Green Thumb Inc.",
+        "owner": "Sarah Lee",
+        "services": [
+            "Garden Design",
+            "Planting",
+            "Maintenance"
+        ],
+        "prices": {
+            "Garden Design": "$100",
+            "Planting": "$50",
+            "Maintenance": "$40"
+        },
+        "hours": "Mon-Sat 9am-5pm"
+    },
+    {
+        "id": 3,
+        "name": "Urban Gardens Ltd.",
+        "owner": "Michael Chen",
+        "services": [
+            "Rooftop Gardens",
+            "Irrigation",
+            "Consulting"
+        ],
+        "prices": {
+            "Rooftop Gardens": "$200",
+            "Irrigation": "$80",
+            "Consulting": "$60"
+        },
+        "hours": "Tue-Sun 10am-4pm"
+    }
+]

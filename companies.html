@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Easy Client</title>
+    <link rel="stylesheet" href="style.css" />
+    <style>
+        .cards h3 a {
+            color: inherit;
+            text-decoration: none;
+        }
+
+        .sidebar nav a.tab-animate {
+            animation: tabClick 0.25s;
+        }
+
+        @keyframes tabClick {
+            0% {
+                background-color: #e0e0e0;
+            }
+
+            100% {
+                background-color: inherit;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+        <aside class="sidebar">
+            <h2>Easy Client</h2>
+            <nav>
+                <a href="index.html">Dashboard</a>
+                <a href="companies.html" class="active">Companies</a>
+                <a href="#">Users</a>
+                <a href="#">Settings</a>
+            </nav>
+        </aside>
+
+        <main class="main">
+            <header class="topbar">
+                <h1>Company Manager</h1>
+                <div class="user-box">Admin</div>
+            </header>
+
+            <section class="content">
+                <h2>All Companies</h2>
+                <div class="cards" id="companies-list">
+                    <!-- Company cards will be rendered here -->
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script>
+        fetch('companies.json')
+            .then(response => response.json())
+            .then(data => {
+                const container = document.getElementById('companies-list');
+                container.innerHTML = '';
+                data.forEach(company => {
+                    const card = document.createElement('div');
+                    card.className = 'card';
+                    card.innerHTML = `
+                        <h3>
+                            <a href="company.html?id=${company.id}">${company.name}</a>
+                        </h3>
+                        <div class="cardOwner">
+                            <p>Owner</p>
+                            <p>${company.owner}</p>
+                        </div>
+                        <a href="company.html?id=${company.id}">
+                            <button>View</button>
+                        </a>
+                    `;
+                    container.appendChild(card);
+                });
+            });
+
+        // Add click animation to sidebar nav links
+        document.querySelectorAll('.sidebar nav a').forEach(link => {
+            link.addEventListener('click', function (e) {
+                link.classList.add('tab-animate');
+                setTimeout(() => {
+                    link.classList.remove('tab-animate');
+                }, 250);
+            });
+        });
+    </script>
+</body>
+
+</html>
