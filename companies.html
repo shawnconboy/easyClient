@@ -56,30 +56,41 @@
         </main>
     </div>
 
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
     <script>
-        fetch('companies.json')
-            .then(response => response.json())
-            .then(data => {
-                const container = document.getElementById('companies-list');
-                container.innerHTML = '';
-                data.forEach(company => {
-                    const card = document.createElement('div');
-                    card.className = 'card';
-                    card.innerHTML = `
-                        <h3>
-                            <a href="company.html?id=${company.id}">${company.name}</a>
-                        </h3>
-                        <div class="cardOwner">
-                            <p>Owner</p>
-                            <p>${company.owner}</p>
-                        </div>
-                        <a href="company.html?id=${company.id}">
-                            <button>View</button>
-                        </a>
-                    `;
-                    container.appendChild(card);
-                });
+        // TODO: Replace with your Firebase project config
+        const firebaseConfig = {
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_AUTH_DOMAIN",
+            projectId: "YOUR_PROJECT_ID",
+            // ...other config...
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        db.collection('companies').get().then(snapshot => {
+            const container = document.getElementById('companies-list');
+            container.innerHTML = '';
+            snapshot.forEach(doc => {
+                const company = doc.data();
+                const card = document.createElement('div');
+                card.className = 'card';
+                card.innerHTML = `
+                    <h3>
+                        <a href="company.html?id=${doc.id}">${company.name}</a>
+                    </h3>
+                    <div class="cardOwner">
+                        <p>Owner</p>
+                        <p>${company.owner}</p>
+                    </div>
+                    <a href="company.html?id=${doc.id}">
+                        <button>View</button>
+                    </a>
+                `;
+                container.appendChild(card);
             });
+        });
 
         // Add click animation to sidebar nav links
         document.querySelectorAll('.sidebar nav a').forEach(link => {
