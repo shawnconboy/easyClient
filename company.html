@@ -7,72 +7,110 @@
     <title>Company Details</title>
     <link rel="stylesheet" href="style.css" />
     <style>
-        .card {
+        .company-details {
             background: #fff;
             border-radius: 12px;
-            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
-            padding: 2rem 2.5rem;
-            margin-top: 2rem;
-            max-width: 800px;
-            width: 500px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.07);
+            padding: 2em;
+            max-width: 600px;
+            margin: 2em auto;
         }
 
-        .card h2 {
+        .company-details h2 {
             margin-top: 0;
-            margin-bottom: 1.2rem;
-            font-size: 1.3rem;
-            font-weight: 600;
+        }
+
+        .company-section {
+            margin-bottom: 1.5em;
         }
 
         .services-list {
-            list-style: none;
-            padding: 0;
-            margin: 0 0 2rem 0;
+            list-style: disc;
+            margin-left: 1.5em;
         }
 
-        .services-list li {
-            padding: 0.7rem 0;
-            border-bottom: 1px solid #eee;
-            display: flex;
-            justify-content: space-between;
-            font-size: 1rem;
+        .info-label {
+            color: #888;
+            font-size: 0.95em;
         }
 
-        .services-list li:last-child {
-            border-bottom: none;
+        .edit-btn,
+        .save-btn,
+        .cancel-btn {
+            padding: 0.5em 1.2em;
+            background: #1976d2;
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            font-size: 1em;
+            cursor: pointer;
+            margin-right: 0.5em;
+            margin-top: 1em;
+            transition: background 0.2s;
+            font-weight: 500;
+            box-shadow: 0 1px 4px rgba(25, 118, 210, 0.08);
         }
 
-        .company-hours {
-            margin-top: 1.5rem;
-            font-size: 1.05rem;
-            color: #555;
+        .edit-btn:hover,
+        .save-btn:hover {
+            background: #1565c0;
         }
 
-        #company-name {
-            margin-bottom: 0.5rem;
-            font-size: 2rem;
-            font-weight: 700;
-            letter-spacing: -1px;
+        .cancel-btn {
+            background: #888;
         }
 
-        .content {
-            display: flex;
-            justify-content: center;
-            align-items: flex-start;
-            min-height: 70vh;
-            padding-top: 2rem;
-            padding-bottom: 2rem;
+        .cancel-btn:hover {
+            background: #555;
         }
 
-        @media (max-width: 600px) {
-            .card {
-                padding: 1rem;
-                max-width: 100%;
-            }
+        .services-edit-list input[type="text"],
+        .services-edit-list input[type="number"] {
+            margin-right: 0.5em;
+            margin-bottom: 0.5em;
+            padding: 0.4em 0.7em;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 1em;
+        }
 
-            #company-name {
-                font-size: 1.3rem;
-            }
+        .add-service-btn {
+            background: #43a047;
+            margin-left: 0.5em;
+        }
+
+        .add-service-btn:hover {
+            background: #388e3c;
+        }
+
+        .remove-service-btn {
+            background: #e53935;
+            margin-left: 0.5em;
+        }
+
+        .remove-service-btn:hover {
+            background: #b71c1c;
+        }
+
+        #toast {
+            position: fixed;
+            top: 2em;
+            right: 2em;
+            background: #1976d2;
+            color: #fff;
+            padding: 1em 2em;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(25, 118, 210, 0.15);
+            font-size: 1em;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+            z-index: 9999;
+        }
+
+        #toast.show {
+            opacity: 1;
+            pointer-events: auto;
         }
     </style>
 </head>
@@ -91,45 +129,220 @@
         </aside>
         <main class="main">
             <header class="topbar">
-                <h1 id="company-name">Company Details</h1>
-                <div class="user-box">Admin</div>
+                <h1>Company Details</h1>
             </header>
-            <section class="content" id="company-details">
-                <!-- Details will be rendered here -->
+            <section class="content">
+                <div class="company-details" id="company-details">
+                    <div style="text-align:center; color:#888;">Loading...</div>
+                </div>
             </section>
+            <div id="toast"></div>
         </main>
     </div>
-    <script>
+    <script type="module">
+        import {
+            initializeApp
+        } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+        import {
+            getFirestore,
+            doc,
+            getDoc,
+            updateDoc,
+            collection,
+            getDocs,
+            arrayUnion,
+            arrayRemove
+        } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyA9iKdL-7YCBWrqbBmLFkw--pS0kET7qZc",
+            authDomain: "easyclient-ac627.firebaseapp.com",
+            projectId: "easyclient-ac627",
+            storageBucket: "easyclient-ac627.firebasestorage.app",
+            messagingSenderId: "247790149498",
+            appId: "1:247790149498:web:6d03859eaa5394f17fc0c3",
+            measurementId: "G-SF966FYKGB"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.classList.add('show');
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 2000);
+        }
+
+        // Get company ID from URL
         function getCompanyId() {
             const params = new URLSearchParams(window.location.search);
             return params.get('id');
         }
-        fetch('companies.json')
-            .then(response => response.json())
-            .then(data => {
-                const id = parseInt(getCompanyId());
-                const company = data.find(c => c.id === id);
-                if (!company) {
-                    document.getElementById('company-details').innerHTML = '<p>Company not found.</p>';
-                    return;
-                }
-                document.getElementById('company-name').textContent = company.name;
-                let servicesHtml = '<ul class="services-list">';
-                company.services.forEach(service => {
-                    servicesHtml += `<li><span>${service}</span><span>${company.prices[service]}</span></li>`;
-                });
-                servicesHtml += '</ul>';
-                document.getElementById('company-details').innerHTML = `
-                    <div class="card">
-                        <h2>Services & Prices</h2>
-                        ${servicesHtml}
-                        <div class="company-hours">
-                            <h2 style="margin-bottom:0.5rem;">Hours of Operation</h2>
-                            <p style="margin:0;">${company.hours}</p>
-                        </div>
+
+        let companyData = null;
+        let companyId = null;
+        let totalBookings = 0;
+
+        async function renderCompanyDetails(editMode = false) {
+            companyId = getCompanyId();
+            const detailsDiv = document.getElementById('company-details');
+            if (!companyId) {
+                detailsDiv.innerHTML = "<div style='color:red;'>No company ID provided.</div>";
+                return;
+            }
+
+            // Fetch company document
+            const companyRef = doc(db, 'companies', companyId);
+            const companySnap = await getDoc(companyRef);
+
+            if (!companySnap.exists()) {
+                detailsDiv.innerHTML = "<div style='color:red;'>Company not found.</div>";
+                return;
+            }
+
+            companyData = companySnap.data();
+
+            // Fetch clients (for total bookings)
+            try {
+                const clientsSnap = await getDocs(collection(companyRef, 'clients'));
+                totalBookings = clientsSnap.size;
+            } catch (e) {
+                totalBookings = 0;
+            }
+
+            if (!editMode) {
+                detailsDiv.innerHTML = `
+                    <h2>${companyData.name || 'N/A'}</h2>
+                    <div class="company-section">
+                        <span class="info-label">Owner:</span> ${companyData.owner || 'N/A'}
                     </div>
+                    <div class="company-section">
+                        <span class="info-label">Owner Phone:</span> ${companyData.ownerPhone || 'N/A'}
+                    </div>
+                    <div class="company-section">
+                        <span class="info-label">Owner Email:</span> ${companyData.ownerEmail || 'N/A'}
+                    </div>
+                    <div class="company-section">
+                        <span class="info-label">Total Bookings:</span> ${totalBookings}
+                    </div>
+                    <div class="company-section">
+                        <span class="info-label">Services Offered:</span>
+                        <ul class="services-list">
+                            ${(companyData.services && companyData.services.length)
+                        ? companyData.services.map((s, i) => `<li>${s.name} - $${s.price}</li>`).join('')
+                        : '<li>No services listed.</li>'}
+                        </ul>
+                    </div>
+                    <div class="company-section">
+                        <span class="info-label">Created:</span> ${companyData.createdAt && companyData.createdAt.toDate ? companyData.createdAt.toDate().toLocaleString() : 'N/A'}
+                    </div>
+                    <div class="company-section">
+                        <span class="info-label">Revenue:</span> $${companyData.revenue || 0}
+                    </div>
+                    <button class="edit-btn" id="edit-company-btn">Edit</button>
                 `;
-            });
+                document.getElementById('edit-company-btn').onclick = () => renderCompanyDetails(true);
+            } else {
+                // Render edit form
+                detailsDiv.innerHTML = `
+                    <form id="edit-company-form">
+                        <h2><input type="text" name="name" value="${companyData.name || ''}" required style="font-size:1.5em; width:90%;"></h2>
+                        <div class="company-section">
+                            <span class="info-label">Owner:</span>
+                            <input type="text" name="owner" value="${companyData.owner || ''}" required>
+                        </div>
+                        <div class="company-section">
+                            <span class="info-label">Owner Phone:</span>
+                            <input type="text" name="ownerPhone" value="${companyData.ownerPhone || ''}">
+                        </div>
+                        <div class="company-section">
+                            <span class="info-label">Owner Email:</span>
+                            <input type="email" name="ownerEmail" value="${companyData.ownerEmail || ''}">
+                        </div>
+                        <div class="company-section">
+                            <span class="info-label">Services Offered:</span>
+                            <div class="services-edit-list" id="services-edit-list">
+                                ${(companyData.services && companyData.services.length)
+                        ? companyData.services.map((s, i) => `
+                                        <div>
+                                            <input type="text" name="serviceName" value="${s.name}" required>
+                                            <input type="number" name="servicePrice" value="${s.price}" min="0" required>
+                                            <button type="button" class="remove-service-btn" data-index="${i}">Remove</button>
+                                        </div>
+                                    `).join('')
+                        : ''
+                    }
+                            </div>
+                            <button type="button" class="add-service-btn">Add Service</button>
+                        </div>
+                        <div class="company-section">
+                            <span class="info-label">Revenue:</span>
+                            <input type="number" name="revenue" value="${companyData.revenue || 0}" min="0">
+                        </div>
+                        <button type="submit" class="save-btn">Save</button>
+                        <button type="button" class="cancel-btn" id="cancel-edit-btn">Cancel</button>
+                    </form>
+                `;
+
+                // Add service logic
+                const servicesEditList = document.getElementById('services-edit-list');
+                document.querySelector('.add-service-btn').onclick = () => {
+                    const div = document.createElement('div');
+                    div.innerHTML = `
+                        <input type="text" name="serviceName" placeholder="Service Name" required>
+                        <input type="number" name="servicePrice" placeholder="Price" min="0" required>
+                        <button type="button" class="remove-service-btn">Remove</button>
+                    `;
+                    div.querySelector('.remove-service-btn').onclick = () => div.remove();
+                    servicesEditList.appendChild(div);
+                };
+                // Remove service logic
+                servicesEditList.querySelectorAll('.remove-service-btn').forEach(btn => {
+                    btn.onclick = () => btn.parentElement.remove();
+                });
+
+                // Cancel button
+                document.getElementById('cancel-edit-btn').onclick = () => renderCompanyDetails(false);
+
+                // Save logic
+                document.getElementById('edit-company-form').onsubmit = async (e) => {
+                    e.preventDefault();
+                    const form = e.target;
+                    const name = form.name.value.trim();
+                    const owner = form.owner.value.trim();
+                    const ownerPhone = form.ownerPhone.value.trim();
+                    const ownerEmail = form.ownerEmail.value.trim();
+                    const revenue = Number(form.revenue.value) || 0;
+                    // Gather services
+                    const serviceNames = Array.from(form.querySelectorAll('input[name="serviceName"]'));
+                    const servicePrices = Array.from(form.querySelectorAll('input[name="servicePrice"]'));
+                    const services = serviceNames.map((input, i) => ({
+                        name: input.value.trim(),
+                        price: Number(servicePrices[i].value) || 0
+                    })).filter(s => s.name);
+
+                    try {
+                        await updateDoc(doc(db, 'companies', companyId), {
+                            name,
+                            owner,
+                            ownerPhone,
+                            ownerEmail,
+                            revenue,
+                            services
+                        });
+                        showToast('Company updated!');
+                        renderCompanyDetails(false);
+                    } catch (err) {
+                        showToast('Error updating company');
+                    }
+                };
+            }
+        }
+
+        renderCompanyDetails();
     </script>
 </body>
 

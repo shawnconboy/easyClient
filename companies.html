@@ -25,6 +25,72 @@
                 background-color: inherit;
             }
         }
+
+        #add-company-form {
+            display: flex;
+            gap: 1em;
+            background: #fff;
+            padding: 1.5em 2em;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.07);
+            align-items: center;
+            margin-bottom: 2em;
+            max-width: 600px;
+        }
+
+        #add-company-form input {
+            flex: 1 1 0;
+            padding: 0.75em 1em;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 1em;
+            background: #f7f7f7;
+            transition: border-color 0.2s;
+        }
+
+        #add-company-form input:focus {
+            border-color: #1976d2;
+            outline: none;
+            background: #fff;
+        }
+
+        #add-company-form button[type="submit"] {
+            padding: 0.75em 1.5em;
+            background: #1976d2;
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            font-size: 1em;
+            cursor: pointer;
+            transition: background 0.2s;
+            font-weight: 500;
+            box-shadow: 0 1px 4px rgba(25, 118, 210, 0.08);
+        }
+
+        #add-company-form button[type="submit"]:hover {
+            background: #1565c0;
+        }
+
+        #toast {
+            position: fixed;
+            top: 2em;
+            right: 2em;
+            background: #1976d2;
+            color: #fff;
+            padding: 1em 2em;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(25, 118, 210, 0.15);
+            font-size: 1em;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+            z-index: 9999;
+        }
+
+        #toast.show {
+            opacity: 1;
+            pointer-events: auto;
+        }
     </style>
 </head>
 
@@ -49,49 +115,155 @@
             </header>
 
             <section class="content">
-                <h2>All Companies</h2>
+                <!-- Analytics Summary -->
+                <div id="analytics-summary" style="display: flex; gap: 2em; margin-bottom: 2em;">
+                    <div
+                        style="background:#fff; border-radius:10px; box-shadow:0 2px 8px rgba(0,0,0,0.07); padding:1.2em 2em; min-width:160px;">
+                        <div style="font-size:2em; font-weight:600;" id="total-companies">0</div>
+                        <div style="color:#888;">Total Companies</div>
+                    </div>
+                    <div
+                        style="background:#fff; border-radius:10px; box-shadow:0 2px 8px rgba(0,0,0,0.07); padding:1.2em 2em; min-width:160px;">
+                        <div style="font-size:2em; font-weight:600;" id="total-revenue">$0</div>
+                        <div style="color:#888;">Total Revenue</div>
+                    </div>
+                    <!-- Add more analytics cards as needed -->
+                </div>
+
+                <!-- Admin Add Company Form -->
+                <form id="add-company-form">
+                    <input type="text" id="company-name" placeholder="Company Name" required />
+                    <input type="text" id="company-owner" placeholder="Owner Name" required />
+                    <button type="submit">Add Company</button>
+                </form>
                 <div class="cards" id="companies-list">
                     <!-- Company cards will be rendered here -->
                 </div>
             </section>
+            <div id="toast"></div>
         </main>
     </div>
 
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-    <script>
-        // TODO: Replace with your Firebase project config
-        const firebaseConfig = {
-            apiKey: "YOUR_API_KEY",
-            authDomain: "YOUR_AUTH_DOMAIN",
-            projectId: "YOUR_PROJECT_ID",
-            // ...other config...
-        };
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore();
+    <script type="module">
+        // Import the functions you need from the SDKs you need
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+        import { getFirestore, collection, addDoc, getDocs, doc, updateDoc } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
-        db.collection('companies').get().then(snapshot => {
+        // Your web app's Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyA9iKdL-7YCBWrqbBmLFkw--pS0kET7qZc",
+            authDomain: "easyclient-ac627.firebaseapp.com",
+            projectId: "easyclient-ac627",
+            storageBucket: "easyclient-ac627.firebasestorage.app",
+            messagingSenderId: "247790149498",
+            appId: "1:247790149498:web:6d03859eaa5394f17fc0c3",
+            measurementId: "G-SF966FYKGB"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // Toast utility
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.classList.add('show');
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 2000);
+        }
+
+        // Add Company (Admin)
+        document.getElementById('add-company-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const nameInput = document.getElementById('company-name');
+            const ownerInput = document.getElementById('company-owner');
+            const name = nameInput.value.trim();
+            const owner = ownerInput.value.trim();
+            if (!name || !owner) return;
+            try {
+                await addDoc(collection(db, 'companies'), { name, owner });
+                showToast('Company added!');
+                nameInput.value = '';
+                ownerInput.value = '';
+                renderCompanies();
+            } catch (err) {
+                showToast('Error adding company');
+            }
+        });
+
+        // Fetch and render companies + analytics
+        async function renderCompanies() {
             const container = document.getElementById('companies-list');
             container.innerHTML = '';
-            snapshot.forEach(doc => {
-                const company = doc.data();
+            const querySnapshot = await getDocs(collection(db, 'companies'));
+            let companyCount = 0;
+            // Placeholder: sum revenue if you have a revenue field per company
+            let totalRevenue = 0;
+            querySnapshot.forEach(docSnap => {
+                companyCount++;
+                const company = docSnap.data();
+                // If you add a revenue field to company, sum it here:
+                // totalRevenue += company.revenue || 0;
                 const card = document.createElement('div');
                 card.className = 'card';
                 card.innerHTML = `
                     <h3>
-                        <a href="company.html?id=${doc.id}">${company.name}</a>
+                        <a href="company.html?id=${docSnap.id}">${company.name}</a>
                     </h3>
                     <div class="cardOwner">
                         <p>Owner</p>
                         <p>${company.owner}</p>
                     </div>
-                    <a href="company.html?id=${doc.id}">
+                    <a href="company.html?id=${docSnap.id}">
                         <button>View</button>
                     </a>
+                    <button class="edit-btn" data-id="${docSnap.id}">Edit</button>
+                    <form class="edit-form" data-id="${docSnap.id}" style="display:none; margin-top:1em;">
+                        <input type="text" name="name" value="${company.name}" required />
+                        <input type="text" name="owner" value="${company.owner}" required />
+                        <button type="submit">Save</button>
+                        <button type="button" class="cancel-edit">Cancel</button>
+                    </form>
                 `;
                 container.appendChild(card);
             });
-        });
+
+            // Update analytics summary
+            document.getElementById('total-companies').textContent = companyCount;
+            document.getElementById('total-revenue').textContent = `$${totalRevenue}`;
+
+            // Add edit button listeners
+            container.querySelectorAll('.edit-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const form = container.querySelector(`.edit-form[data-id="${btn.dataset.id}"]`);
+                    form.style.display = 'block';
+                });
+            });
+
+            // Add cancel button listeners
+            container.querySelectorAll('.cancel-edit').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.target.closest('.edit-form').style.display = 'none';
+                });
+            });
+
+            // Add edit form submit listeners
+            container.querySelectorAll('.edit-form').forEach(form => {
+                form.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    const id = form.dataset.id;
+                    const name = form.elements['name'].value.trim();
+                    const owner = form.elements['owner'].value.trim();
+                    await updateDoc(doc(db, 'companies', id), { name, owner });
+                    form.style.display = 'none';
+                    renderCompanies();
+                });
+            });
+        }
+
+        renderCompanies();
 
         // Add click animation to sidebar nav links
         document.querySelectorAll('.sidebar nav a').forEach(link => {
