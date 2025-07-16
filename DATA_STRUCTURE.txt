@@ -1,0 +1,22 @@
+Firestore Root
+├── companies (collection)
+│   ├── {companyId} (document)
+│   │   ├── companyName: string
+│   │   ├── owner: string
+│   │   ├── ownerPhone: string
+│   │   ├── ownerEmail: string
+│   │   ├── revenue: number         // Total revenue for the company (sum of all sales, contracts, or invoices)
+│   │   └── services: array of objects
+│   │        ├── name: string
+│   │        └── price: number|string
+│   └── ...
+├── users (collection)
+│   ├── {userId} (document)
+│   │   ├── name: string
+│   │   ├── email: string
+│   │   ├── role: string   // "admin", "owner", or "customer"
+│   │   └── ... (other user fields)
+│   └── ...
+├── settings (collection or document)
+│   └── ... (global settings, if any)
+└── ... (other collections as needed)
