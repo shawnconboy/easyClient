@@ -25,7 +25,14 @@
         <main class="main">
             <header class="topbar">
                 <h1>Admin Dashboard</h1>
-                <div class="user-box">Admin</div>
+                <div class="user-box" id="user-box"
+                    style="margin-left:auto; display:flex; align-items:center; gap:1em;">
+                    <button id="auth-btn"
+                        style="color:#1976d2; border:none; border-radius:8px; padding:0.5em 1.5em; font-size:1em; font-weight:500; cursor:pointer; box-shadow:none; transition:background 0.2s;"
+                        title="Sign in">
+                        Sign In
+                    </button>
+                </div>
             </header>
 
             <section class="content">
@@ -44,6 +51,44 @@
         </main>
     </div>
 
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+        import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+
+        // Your web app's Firebase configuration
+        const firebaseConfig = {
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_AUTH_DOMAIN",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_STORAGE_BUCKET",
+            messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+            appId: "YOUR_APP_ID"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+
+        const auth = getAuth();
+
+        const authBtn = document.getElementById('auth-btn');
+        onAuthStateChanged(auth, user => {
+            if (user) {
+                authBtn.textContent = user.displayName || user.email;
+                authBtn.onclick = () => signOut(auth);
+                authBtn.title = "Sign out";
+                authBtn.style.background = "#1976d2";
+                authBtn.style.color = "#fff";
+            } else {
+                authBtn.textContent = "Sign In";
+                authBtn.onclick = () => {
+                    window.location.href = `login.html?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`;
+                };
+                authBtn.title = "Sign in";
+                authBtn.style.background = "#1976d2";
+                authBtn.style.color = "#fff";
+            }
+        });
+    </script>
 </body>
 
 </html>

@@ -4,9 +4,10 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Company Details</title>
+    <title>Business Owner Dashboard</title>
     <link rel="stylesheet" href="style.css" />
     <style>
+        /* Reuse company-card and form styles from company.html */
         .company-card {
             background: #fff;
             border-radius: 12px;
@@ -219,19 +220,9 @@
 
 <body>
     <div class="container">
-        <aside class="sidebar">
-            <h2>Easy Client</h2>
-            <nav>
-                <a href="index.html">Dashboard</a>
-                <a href="companies.html">Companies</a>
-                <a href="#">Users</a>
-                <a href="settings.html">Settings</a>
-                <a href="landing.html">Landing Page</a>
-            </nav>
-        </aside>
         <main class="main">
             <header class="topbar">
-                <h1>Company Details</h1>
+                <h1>Business Owner Dashboard</h1>
                 <div class="user-box" id="user-box"
                     style="margin-left:auto; display:flex; align-items:center; gap:1em;">
                     <button id="auth-btn"
@@ -242,15 +233,12 @@
                 </div>
             </header>
             <section class="content">
+                <div id="company-select-section">
+                    <label for="company-select">Select Your Company:</label>
+                    <select id="company-select"></select>
+                    <button id="load-company-btn" style="margin-left:1em;">Load</button>
+                </div>
                 <div class="company-card" id="company-card" style="display:none;">
-                    <button id="back-btn"
-                        style="margin-bottom:1.5em; background:#e0e0e0; color:#1976d2; border:none; border-radius:8px; padding:0.6em 1.2em; font-size:1em; font-weight:500; cursor:pointer; box-shadow:0 1px 4px rgba(25,118,210,0.04);">
-                        ← Back to Companies
-                    </button>
-                    <button id="see-as-owner-btn"
-                        style="margin-bottom:1.5em; margin-left:1em; background:#fffbe6; color:#1976d2; border:1px solid #ffe082; border-radius:8px; padding:0.6em 1.2em; font-size:1em; font-weight:500; cursor:pointer; box-shadow:0 1px 4px rgba(255,193,7,0.08);">
-                        See as Business Owner
-                    </button>
                     <h2 id="company-title"></h2>
                     <form id="edit-company-form">
                         <div class="company-fields">
@@ -294,20 +282,9 @@
         </main>
     </div>
     <script type="module">
-        import {
-            initializeApp
-        } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
-        import {
-            getFirestore,
-            doc,
-            getDoc,
-            updateDoc
-        } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
-        import {
-            getAuth,
-            onAuthStateChanged,
-            signOut
-        } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+        import { getFirestore, collection, getDocs, doc, getDoc, updateDoc } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+        import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyA9iKdL-7YCBWrqbBmLFkw--pS0kET7qZc",
@@ -323,7 +300,10 @@
         const db = getFirestore(app);
         const auth = getAuth(app);
 
-        // Toast utility
+        let selectedCompanyId = null;
+        let originalServices = [];
+        let currentServices = [];
+
         function showToast(message) {
             const toast = document.getElementById('toast');
             toast.textContent = message;
@@ -333,23 +313,22 @@
             }, 2000);
         }
 
-        // Get company ID from URL
-        function getCompanyId() {
-            const params = new URLSearchParams(window.location.search);
-            return params.get('id');
+        // Populate company select dropdown
+        async function loadCompanies() {
+            const select = document.getElementById('company-select');
+            select.innerHTML = '';
+            const querySnapshot = await getDocs(collection(db, 'companies'));
+            querySnapshot.forEach(docSnap => {
+                const company = docSnap.data();
+                const option = document.createElement('option');
+                option.value = docSnap.id;
+                option.textContent = company.name;
+                select.appendChild(option);
+            });
         }
 
-        let originalServices = [];
-        let currentServices = [];
-
-        // Back button
-        document.getElementById('back-btn').addEventListener('click', () => {
-            window.location.href = 'companies.html';
-        });
-
-        // Render company data
-        async function renderCompany() {
-            const id = getCompanyId();
+        // Load selected company details
+        async function renderCompany(id) {
             if (!id) return;
             const docRef = doc(db, 'companies', id);
             const docSnap = await getDoc(docRef);
@@ -363,7 +342,6 @@
             document.getElementById('company-owner').value = company.owner;
             document.getElementById('company-ownerPhone').value = company.ownerPhone;
             document.getElementById('company-ownerEmail').value = company.ownerEmail;
-            // Services
             originalServices = Array.isArray(company.services)
                 ? company.services.map(s => typeof s === "string" ? { name: s, price: "" } : s)
                 : [];
@@ -390,7 +368,6 @@
                 `;
                 list.appendChild(li);
             });
-            // Add listeners for remove and edit
             list.querySelectorAll('.remove-service-btn').forEach(btn => {
                 btn.addEventListener('click', (e) => {
                     const idx = Number(btn.dataset.idx);
@@ -410,6 +387,12 @@
                 });
             });
         }
+
+        document.getElementById('load-company-btn').addEventListener('click', async () => {
+            selectedCompanyId = document.getElementById('company-select').value;
+            if (!selectedCompanyId) return;
+            await renderCompany(selectedCompanyId);
+        });
 
         document.getElementById('add-service-form').addEventListener('submit', (e) => {
             e.preventDefault();
@@ -439,11 +422,10 @@
         });
 
         document.getElementById('save-services-btn').addEventListener('click', async () => {
-            const id = getCompanyId();
-            // Filter out empty names
+            if (!selectedCompanyId) return;
             const filtered = currentServices.filter(s => s.name && s.name.trim() !== "");
             try {
-                await updateDoc(doc(db, 'companies', id), { services: filtered });
+                await updateDoc(doc(db, 'companies', selectedCompanyId), { services: filtered });
                 originalServices = filtered.map(s => ({ ...s }));
                 currentServices = filtered.map(s => ({ ...s }));
                 showToast('Services updated!');
@@ -453,17 +435,16 @@
             }
         });
 
-        // Edit form submit
         document.getElementById('edit-company-form').addEventListener('submit', async (e) => {
             e.preventDefault();
-            const id = getCompanyId();
+            if (!selectedCompanyId) return;
             const name = document.getElementById('company-name').value.trim();
             const owner = document.getElementById('company-owner').value.trim();
             const ownerPhone = document.getElementById('company-ownerPhone').value.trim();
             const ownerEmail = document.getElementById('company-ownerEmail').value.trim();
 
             try {
-                await updateDoc(doc(db, 'companies', id), {
+                await updateDoc(doc(db, 'companies', selectedCompanyId), {
                     name,
                     owner,
                     ownerPhone,
@@ -476,17 +457,8 @@
             }
         });
 
-        // Cancel button
         document.querySelector('.company-actions .cancel').addEventListener('click', () => {
-            renderCompany();
-        });
-
-        // See as Business Owner button
-        document.getElementById('see-as-owner-btn').addEventListener('click', () => {
-            const companyId = getCompanyId();
-            if (companyId) {
-                window.open(`owner-dashboard.html?companyId=${companyId}`, '_blank');
-            }
+            if (selectedCompanyId) renderCompany(selectedCompanyId);
         });
 
         // Universal Auth button logic
@@ -511,7 +483,7 @@
             }
         });
 
-        renderCompany();
+        loadCompanies();
     </script>
 </body>
 
