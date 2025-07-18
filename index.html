@@ -9,7 +9,6 @@
 </head>
 
 <body>
-
     <div class="container">
         <aside class="sidebar">
             <h2>Easy Client</h2>
@@ -21,7 +20,6 @@
                 <a href="landing.html">Landing Page</a>
             </nav>
         </aside>
-
         <main class="main">
             <header class="topbar">
                 <h1>Admin Dashboard</h1>
@@ -33,8 +31,17 @@
                         Sign In
                     </button>
                 </div>
+                <!-- User modal -->
+                <div id="user-modal" style="display:none;position:absolute;top:70px;right:40px;z-index:2000;">
+                    <div
+                        style="background:#fff;border-radius:12px;box-shadow:0 2px 12px rgba(25,118,210,0.13);padding:1.2em 1.5em;min-width:220px;display:flex;flex-direction:column;align-items:flex-start;gap:1em;">
+                        <div id="user-modal-email" style="color:#1976d2;font-weight:600;font-size:1em;"></div>
+                        <button id="logout-btn"
+                            style="background:#e57373;color:#fff;border:none;border-radius:8px;padding:0.6em 1.2em;font-size:1em;font-weight:500;cursor:pointer;box-shadow:0 1px 4px rgba(25,118,210,0.08);width:100%;">Log
+                            Out</button>
+                    </div>
+                </div>
             </header>
-
             <section class="content">
                 <h2>All Companies</h2>
                 <div class="cards">
@@ -50,42 +57,85 @@
             </section>
         </main>
     </div>
-
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
         import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+        import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
-        // Your web app's Firebase configuration
+        // Unified Firebase config (replace with your actual config if needed)
         const firebaseConfig = {
-            apiKey: "YOUR_API_KEY",
-            authDomain: "YOUR_AUTH_DOMAIN",
-            projectId: "YOUR_PROJECT_ID",
-            storageBucket: "YOUR_STORAGE_BUCKET",
-            messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-            appId: "YOUR_APP_ID"
+            apiKey: "AIzaSyA9iKdL-7YCBWrqbBmLFkw--pS0kET7qZc",
+            authDomain: "easyclient-ac627.firebaseapp.com",
+            projectId: "easyclient-ac627",
+            storageBucket: "easyclient-ac627.firebasestorage.app",
+            messagingSenderId: "247790149498",
+            appId: "1:247790149498:web:6d03859eaa5394f17fc0c3",
+            measurementId: "G-SF966FYKGB"
         };
 
-        // Initialize Firebase
         const app = initializeApp(firebaseConfig);
-
-        const auth = getAuth();
+        const auth = getAuth(app);
+        const db = getFirestore(app);
 
         const authBtn = document.getElementById('auth-btn');
-        onAuthStateChanged(auth, user => {
+        const userModal = document.getElementById('user-modal');
+        const userModalEmail = document.getElementById('user-modal-email');
+        const logoutBtn = document.getElementById('logout-btn');
+        let userEmail = "";
+
+        function showUserModal() {
+            userModal.style.display = 'block';
+            userModalEmail.textContent = userEmail;
+            setTimeout(() => {
+                document.addEventListener('mousedown', handleOutsideClick);
+            }, 0);
+        }
+        function hideUserModal() {
+            userModal.style.display = 'none';
+            document.removeEventListener('mousedown', handleOutsideClick);
+        }
+        function handleOutsideClick(e) {
+            if (!userModal.contains(e.target) && e.target !== authBtn) {
+                hideUserModal();
+            }
+        }
+
+        onAuthStateChanged(auth, async user => {
             if (user) {
-                authBtn.textContent = user.displayName || user.email;
-                authBtn.onclick = () => signOut(auth);
-                authBtn.title = "Sign out";
+                let displayName = user.displayName;
+                try {
+                    const userDoc = await getDoc(doc(db, "users", user.uid));
+                    if (userDoc.exists() && userDoc.data().name) {
+                        displayName = userDoc.data().name;
+                    }
+                } catch { }
+                userEmail = user.email;
+                authBtn.textContent = displayName || user.email;
+                authBtn.title = "Account";
                 authBtn.style.background = "#1976d2";
                 authBtn.style.color = "#fff";
+                authBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    if (userModal.style.display === 'block') {
+                        hideUserModal();
+                    } else {
+                        showUserModal();
+                    }
+                };
+                logoutBtn.onclick = async () => {
+                    await signOut(auth);
+                    hideUserModal();
+                };
             } else {
+                userEmail = "";
                 authBtn.textContent = "Sign In";
+                authBtn.title = "Sign in";
                 authBtn.onclick = () => {
                     window.location.href = `login.html?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`;
                 };
-                authBtn.title = "Sign in";
                 authBtn.style.background = "#1976d2";
                 authBtn.style.color = "#fff";
+                hideUserModal();
             }
         });
     </script>

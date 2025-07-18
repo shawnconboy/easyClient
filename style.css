@@ -88,6 +88,33 @@ html {
     border-radius: 20px;
     font-weight: 500;
     font-size: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 1em;
+}
+
+#auth-btn {
+    color: #fff !important;
+    background: #1976d2 !important;
+    border: none;
+    border-radius: 8px;
+    padding: 0.5em 1.5em;
+    font-size: 1em;
+    font-weight: 500;
+    cursor: pointer;
+    box-shadow: none;
+    transition: background 0.2s;
+    min-width: 120px;
+    text-align: center;
+}
+
+#auth-btn[title="Sign in"] {
+    background: #1976d2 !important;
+    color: #fff !important;
+}
+
+#auth-btn[title="Sign out"]:hover {
+    background: #1565c0 !important;
 }
 
 .content {
