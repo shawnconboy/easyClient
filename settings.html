@@ -25,21 +25,15 @@
                 <h1>Settings</h1>
                 <div class="user-box" id="user-box"
                     style="margin-left:auto; display:flex; align-items:center; gap:1em;">
-                    <button id="auth-btn"
-                        style="color:#1976d2; border:none; border-radius:8px; padding:0.5em 1.5em; font-size:1em; font-weight:500; cursor:pointer; box-shadow:none; transition:background 0.2s;"
-                        title="Sign in">
+                    <button id="auth-btn" title="Sign in">
                         Sign In
                     </button>
                 </div>
                 <!-- User modal -->
-                <div id="user-modal" style="display:none;position:absolute;top:70px;right:40px;z-index:2000;">
-                    <div
-                        style="background:#fff;border-radius:12px;box-shadow:0 2px 12px rgba(25,118,210,0.13);padding:1.2em 1.5em;min-width:220px;display:flex;flex-direction:column;align-items:flex-start;gap:1em;">
-                        <div id="user-modal-email" style="color:#1976d2;font-weight:600;font-size:1em;"></div>
-                        <button id="logout-btn"
-                            style="background:#e57373;color:#fff;border:none;border-radius:8px;padding:0.6em 1.2em;font-size:1em;font-weight:500;cursor:pointer;box-shadow:0 1px 4px rgba(25,118,210,0.08);width:100%;">
-                            Log Out
-                        </button>
+                <div id="user-modal" class="user-modal">
+                    <div class="user-modal-inner">
+                        <div id="user-modal-email" class="user-modal-email"></div>
+                        <button id="logout-btn" class="logout-btn">Log Out</button>
                     </div>
                 </div>
             </header>
@@ -59,6 +53,7 @@
         import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
         import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
+        // Your web app's Firebase configuration
         const firebaseConfig = {
             apiKey: "AIzaSyA9iKdL-7YCBWrqbBmLFkw--pS0kET7qZc",
             authDomain: "easyclient-ac627.firebaseapp.com",
@@ -69,6 +64,7 @@
             measurementId: "G-SF966FYKGB"
         };
 
+        // Initialize Firebase
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
