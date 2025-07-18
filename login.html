@@ -548,6 +548,19 @@
                 }
 
                 await setDoc(doc(db, 'users', user.uid), userData);
+
+                // If business owner, also add to companies collection
+                if (signupRole === 'owner') {
+                    await setDoc(doc(db, 'companies', user.uid), {
+                        name: business,
+                        ownerUid: user.uid,
+                        ownerEmail: email,
+                        ownerName: name,
+                        ownerPhone: phone,
+                        createdAt: new Date().toISOString()
+                    });
+                }
+
                 signupModal.style.display = 'none';
                 signupForm.reset();
                 window.location.href = 'index.html';

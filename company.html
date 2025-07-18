@@ -360,7 +360,8 @@
             const company = docSnap.data();
             document.getElementById('company-title').textContent = company.name;
             document.getElementById('company-name').value = company.name;
-            document.getElementById('company-owner').value = company.owner;
+            // Show ownerName instead of owner
+            document.getElementById('company-owner').value = company.ownerName || '';
             document.getElementById('company-ownerPhone').value = company.ownerPhone;
             document.getElementById('company-ownerEmail').value = company.ownerEmail;
             // Services
@@ -458,14 +459,15 @@
             e.preventDefault();
             const id = getCompanyId();
             const name = document.getElementById('company-name').value.trim();
-            const owner = document.getElementById('company-owner').value.trim();
+            // Save as ownerName, not owner
+            const ownerName = document.getElementById('company-owner').value.trim();
             const ownerPhone = document.getElementById('company-ownerPhone').value.trim();
             const ownerEmail = document.getElementById('company-ownerEmail').value.trim();
 
             try {
                 await updateDoc(doc(db, 'companies', id), {
                     name,
-                    owner,
+                    ownerName,
                     ownerPhone,
                     ownerEmail
                 });
