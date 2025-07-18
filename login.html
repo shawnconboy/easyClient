@@ -7,6 +7,192 @@
     <title>Sign In - Easy Client</title>
     <link rel="stylesheet" href="style.css" />
     <style>
+        /* Primary large button (Sign In) */
+        .primary-btn {
+            width: 100%;
+            min-height: 54px;
+            font-size: 1.22em;
+            font-weight: 700;
+            border-radius: 14px;
+            background: #1976d2;
+            color: #fff;
+            border: none;
+            box-shadow: 0 2px 8px rgba(25, 118, 210, 0.10);
+            transition: background 0.2s, box-shadow 0.2s;
+            margin-bottom: 1em;
+            cursor: pointer;
+        }
+
+        .primary-btn:hover {
+            background: #1565c0;
+            box-shadow: 0 4px 16px rgba(25, 118, 210, 0.13);
+        }
+
+        /* Accent smaller buttons (Sign Up, Reset Password, modal actions) */
+        .accent-btn {
+            width: 100%;
+            min-height: 40px;
+            font-size: 1em;
+            font-weight: 500;
+            border-radius: 10px;
+            background: #fff;
+            color: #1976d2;
+            border: 1.5px solid #1976d2;
+            box-shadow: 0 1px 4px rgba(25, 118, 210, 0.06);
+            transition: background 0.2s, color 0.2s, border-color 0.2s;
+            margin-bottom: 0.7em;
+            cursor: pointer;
+        }
+
+        .accent-btn:last-child {
+            margin-bottom: 0;
+        }
+
+        .accent-btn:hover {
+            background: #e3f0fc;
+            color: #1565c0;
+            border-color: #1565c0;
+        }
+
+        /* Modal submit button (smaller, blue) */
+        .modal-submit-btn {
+            width: 100%;
+            min-height: 40px;
+            font-size: 1em;
+            font-weight: 600;
+            border-radius: 10px;
+            background: #1976d2;
+            color: #fff;
+            border: none;
+            box-shadow: 0 1px 4px rgba(25, 118, 210, 0.08);
+            margin-bottom: 0.7em;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .modal-submit-btn:hover {
+            background: #1565c0;
+        }
+
+        /* Modal cancel button (smaller accent) */
+        .modal-cancel-btn {
+            width: 100%;
+            min-height: 40px;
+            font-size: 1em;
+            font-weight: 500;
+            border-radius: 10px;
+            background: #fff;
+            color: #1976d2;
+            border: 1.5px solid #1976d2;
+            box-shadow: 0 1px 4px rgba(25, 118, 210, 0.06);
+            cursor: pointer;
+            transition: background 0.2s, color 0.2s, border-color 0.2s;
+        }
+
+        .modal-cancel-btn:hover {
+            background: #e3f0fc;
+            color: #1565c0;
+            border-color: #1565c0;
+        }
+
+        /* Make modal buttons full width and consistent */
+        #signup-form button,
+        #reset-form button,
+        /* Add main form action buttons for iOS style */
+        .login-form .login-action-btn {
+            width: 100% !important;
+            min-height: 48px !important;
+            margin-bottom: 0.7em;
+            font-size: 1.12em !important;
+            border-radius: 12px !important;
+            letter-spacing: 0.01em;
+        }
+
+        #signup-form button:last-child,
+        #reset-form button:last-child,
+        /* Remove margin from last main action button */
+        .login-form .login-action-btn:last-child {
+            margin-bottom: 0 !important;
+        }
+
+        /* Add spacing below modal headers */
+        #signup-modal h2,
+        #reset-modal h2 {
+            margin-bottom: 1.2em;
+        }
+
+        /* Modal form improvements for Apple-like clean UI */
+        #signup-modal>div,
+        #reset-modal>div {
+            padding: 2.5em 2em 2em 2em !important;
+            border-radius: 18px !important;
+            box-shadow: 0 4px 24px rgba(25, 118, 210, 0.10), 0 1.5px 6px rgba(0, 0, 0, 0.04);
+        }
+
+        #signup-form input,
+        #reset-form input {
+            padding: 1em 1.1em;
+            border: 1px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 1em;
+            background: #f7f7f7;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            box-shadow: none;
+            outline: none;
+        }
+
+        #signup-form input:focus,
+        #reset-form input:focus {
+            border-color: #1976d2;
+            background: #fff;
+            box-shadow: 0 0 0 2px #e3f0fc;
+            outline: none;
+        }
+
+        /* Modal and main action buttons styling */
+        #signup-form button,
+        #reset-form button,
+        .login-form .login-action-btn {
+            padding: 0.95em 1.2em;
+            border-radius: 10px;
+            font-size: 1em;
+            font-weight: 500;
+            border: none;
+            box-shadow: 0 1px 4px rgba(25, 118, 210, 0.06);
+            transition: background 0.2s, color 0.2s;
+        }
+
+        #signup-form button[type="submit"],
+        #reset-form button[type="submit"],
+        /* Main form primary action button (Sign In) */
+        .login-form button[type="submit"] {
+            background: #1976d2;
+            color: #fff;
+        }
+
+        #signup-form button[type="submit"]:hover,
+        #reset-form button[type="submit"]:hover,
+        .login-form button[type="submit"]:hover {
+            background: #1565c0;
+        }
+
+        #signup-form button[type="button"],
+        #reset-form button[type="button"],
+        /* Main form secondary action buttons (Sign Up, Reset Password) */
+        .login-form .login-action-btn {
+            background: #fff;
+            color: #1976d2;
+            border: 1px solid #1976d2;
+        }
+
+        #signup-form button[type="button"]:hover,
+        #reset-form button[type="button"]:hover,
+        .login-form .login-action-btn:hover {
+            background: #e3f0fc;
+            color: #1565c0;
+            border-color: #1565c0;
+        }
+
         body {
             background: #f5f7fa;
             margin: 0;
@@ -55,21 +241,8 @@
             background: #fff;
         }
 
-        .login-form button[type="submit"] {
-            padding: 0.85em 1.2em;
-            background: #1976d2;
-            color: #fff;
-            border: none;
-            border-radius: 8px;
-            font-size: 1em;
-            font-weight: 500;
+        .login-form .login-action-btn {
             cursor: pointer;
-            transition: background 0.2s;
-            box-shadow: 0 1px 4px rgba(25, 118, 210, 0.08);
-        }
-
-        .login-form button[type="submit"]:hover {
-            background: #1565c0;
         }
 
         .login-error {
@@ -88,6 +261,77 @@
             font-size: 0.95em;
             text-align: center;
         }
+
+        /* Role selection modal styles */
+        #role-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.25);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #role-modal>div {
+            background: #fff;
+            padding: 2.5em 2em 2em 2em !important;
+            border-radius: 18px !important;
+            box-shadow: 0 4px 24px rgba(25, 118, 210, 0.10), 0 1.5px 6px rgba(0, 0, 0, 0.04);
+            max-width: 400px;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        #role-modal h2 {
+            margin-top: 0;
+            margin-bottom: 1.2em;
+            color: #1976d2;
+            font-size: 1.4em;
+            font-weight: 600;
+        }
+
+        .role-btn {
+            width: 100% !important;
+            min-height: 48px !important;
+            margin-bottom: 0.7em;
+            font-size: 1.12em !important;
+            border-radius: 12px !important;
+            letter-spacing: 0.01em;
+            padding: 0.95em 1.2em;
+            border: 1px solid #1976d2;
+            background: #fff;
+            color: #1976d2;
+            font-weight: 500;
+            box-shadow: 0 1px 4px rgba(25, 118, 210, 0.06);
+            transition: background 0.2s, color 0.2s, border-color 0.2s;
+            cursor: pointer;
+        }
+
+        .role-btn:last-child {
+            margin-bottom: 0 !important;
+        }
+
+        .role-btn:hover {
+            background: #e3f0fc;
+            color: #1565c0;
+            border-color: #1565c0;
+        }
+
+        #role-cancel {
+            margin-top: 1em;
+            background: #fff;
+            color: #888;
+            border: none;
+            font-size: 1em;
+            cursor: pointer;
+            text-decoration: underline;
+        }
     </style>
 </head>
 
@@ -99,15 +343,63 @@
             <input type="email" id="login-email" placeholder="Email" autocomplete="username" required />
             <input type="password" id="login-password" placeholder="Password" autocomplete="current-password"
                 required />
-            <button type="submit" id="login-btn">Sign In</button>
+            <button type="submit" id="login-btn" class="primary-btn">Sign In</button>
+            <button type="button" id="signup-btn" class="accent-btn">Sign Up</button>
+            <button type="button" id="reset-btn" class="accent-btn">Reset Password</button>
         </form>
         <div class="login-footer">
             &copy; Easy Client
         </div>
+
+        <!-- Role Selection Modal -->
+        <div id="role-modal">
+            <div>
+                <h2>Sign Up As</h2>
+                <button class="accent-btn" id="role-owner">Business Owner</button>
+                <button class="accent-btn" id="role-client">Client</button>
+                <button id="role-cancel" class="modal-cancel-btn">Cancel</button>
+            </div>
+        </div>
+
+        <!-- Sign Up Modal -->
+        <div id="signup-modal"
+            style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.25);z-index:1000;align-items:center;justify-content:center;">
+            <div
+                style="background:#fff;padding:2em 2em 1.5em 2em;border-radius:14px;max-width:400px;width:100%;box-shadow:0 2px 12px rgba(25,118,210,0.12);position:relative;">
+                <h2 style="margin-top:0;color:#1976d2;" id="signup-title">Sign Up</h2>
+                <form id="signup-form" style="display:flex;flex-direction:column;gap:1em;">
+                    <input type="text" id="signup-name" placeholder="Your Name" required />
+                    <input type="email" id="signup-email" placeholder="Email" required />
+                    <input type="password" id="signup-password" placeholder="Password" required />
+                    <input type="password" id="signup-confirm" placeholder="Confirm Password" required />
+                    <input type="text" id="signup-business" placeholder="Business Name" required />
+                    <input type="tel" id="signup-phone" placeholder="Phone Number" required />
+                    <div class="login-error" id="signup-error" style="display:none;"></div>
+                    <button type="submit" class="modal-submit-btn">Create Account</button>
+                    <button type="button" id="signup-cancel" class="modal-cancel-btn">Cancel</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Reset Password Modal -->
+        <div id="reset-modal"
+            style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.25);z-index:1000;align-items:center;justify-content:center;">
+            <div
+                style="background:#fff;padding:2em 2em 1.5em 2em;border-radius:14px;max-width:400px;width:100%;box-shadow:0 2px 12px rgba(25,118,210,0.12);position:relative;">
+                <h2 style="margin-top:0;color:#1976d2;">Reset Password</h2>
+                <form id="reset-form" style="display:flex;flex-direction:column;gap:1em;">
+                    <input type="email" id="reset-email" placeholder="Enter your email" required />
+                    <div class="login-error" id="reset-error" style="display:none;"></div>
+                    <button type="submit" class="modal-submit-btn">Send Reset Email</button>
+                    <button type="button" id="reset-cancel" class="modal-cancel-btn">Cancel</button>
+                </form>
+            </div>
+        </div>
     </div>
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
-        import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+        import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+        import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyA9iKdL-7YCBWrqbBmLFkw--pS0kET7qZc",
@@ -121,7 +413,9 @@
 
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
+        const db = getFirestore(app);
 
+        // Login logic
         const form = document.getElementById('login-form');
         const emailInput = document.getElementById('login-email');
         const passwordInput = document.getElementById('login-password');
@@ -139,6 +433,159 @@
             } catch (err) {
                 errorBox.textContent = "Invalid email or password.";
                 errorBox.style.display = 'block';
+            }
+        });
+
+        // Modal elements
+        const signupBtn = document.getElementById('signup-btn');
+        const signupModal = document.getElementById('signup-modal');
+        const signupForm = document.getElementById('signup-form');
+        const signupCancel = document.getElementById('signup-cancel');
+        const signupError = document.getElementById('signup-error');
+        const signupTitle = document.getElementById('signup-title');
+        const signupBusiness = document.getElementById('signup-business');
+        const signupPhone = document.getElementById('signup-phone');
+
+        // Role modal elements
+        const roleModal = document.getElementById('role-modal');
+        const roleOwner = document.getElementById('role-owner');
+        const roleClient = document.getElementById('role-client');
+        const roleCancel = document.getElementById('role-cancel');
+        let signupRole = null;
+
+        // Ensure correct initial state for modals and fields
+        window.addEventListener('DOMContentLoaded', () => {
+            roleModal.style.display = 'none';
+            signupModal.style.display = 'none';
+            signupBusiness.style.display = 'block';
+            signupBusiness.required = true;
+            signupPhone.style.display = 'block';
+            signupPhone.required = true;
+        });
+
+        // Show role selection modal when Sign Up is clicked
+        signupBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            roleModal.style.display = 'flex';
+            signupModal.style.display = 'none';
+        });
+
+        // Hide role modal when Cancel is clicked
+        roleCancel.addEventListener('click', (e) => {
+            e.preventDefault();
+            roleModal.style.display = 'none';
+        });
+
+        // Handle Business Owner selection
+        roleOwner.addEventListener('click', (e) => {
+            e.preventDefault();
+            signupRole = 'owner';
+            signupTitle.textContent = 'Sign Up as Business Owner';
+            signupBusiness.style.display = 'block';
+            signupBusiness.required = true;
+            signupPhone.style.display = 'block';
+            signupPhone.required = true;
+            roleModal.style.display = 'none';
+            signupModal.style.display = 'flex';
+        });
+
+        // Handle Client selection
+        roleClient.addEventListener('click', (e) => {
+            e.preventDefault();
+            signupRole = 'client';
+            signupTitle.textContent = 'Sign Up as Client';
+            signupBusiness.style.display = 'none';
+            signupBusiness.required = false;
+            signupPhone.style.display = 'block';
+            signupPhone.required = true;
+            roleModal.style.display = 'none';
+            signupModal.style.display = 'flex';
+        });
+
+        signupCancel.addEventListener('click', (e) => {
+            e.preventDefault();
+            signupModal.style.display = 'none';
+            signupForm.reset();
+            signupError.style.display = 'none';
+            // Reset for next open
+            signupBusiness.style.display = 'block';
+            signupBusiness.required = true;
+            signupPhone.style.display = 'block';
+            signupPhone.required = true;
+        });
+
+        signupForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            signupError.style.display = 'none';
+            const name = document.getElementById('signup-name').value.trim();
+            const email = document.getElementById('signup-email').value.trim();
+            const password = document.getElementById('signup-password').value;
+            const confirm = document.getElementById('signup-confirm').value;
+            const business = signupRole === 'owner' ? document.getElementById('signup-business').value.trim() : '';
+            const phone = document.getElementById('signup-phone').value.trim();
+
+            if (password !== confirm) {
+                signupError.textContent = "Passwords do not match.";
+                signupError.style.display = 'block';
+                return;
+            }
+
+            try {
+                const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+                const user = userCredential.user;
+
+                // Store user profile in Firestore
+                const userData = {
+                    name,
+                    email,
+                    phone,
+                    role: signupRole,
+                    createdAt: new Date().toISOString()
+                };
+
+                if (signupRole === 'owner') {
+                    userData.business = business;
+                }
+
+                await setDoc(doc(db, 'users', user.uid), userData);
+                signupModal.style.display = 'none';
+                signupForm.reset();
+                window.location.href = 'index.html';
+            } catch (err) {
+                signupError.textContent = err.message.replace('Firebase: ', '');
+                signupError.style.display = 'block';
+            }
+        });
+
+        // Reset password logic
+        const resetBtn = document.getElementById('reset-btn');
+        const resetModal = document.getElementById('reset-modal');
+        const resetForm = document.getElementById('reset-form');
+        const resetCancel = document.getElementById('reset-cancel');
+        const resetError = document.getElementById('reset-error');
+
+        resetBtn.addEventListener('click', () => {
+            resetModal.style.display = 'flex';
+        });
+        resetCancel.addEventListener('click', () => {
+            resetModal.style.display = 'none';
+            resetForm.reset();
+            resetError.style.display = 'none';
+        });
+
+        resetForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            resetError.style.display = 'none';
+            const email = document.getElementById('reset-email').value.trim();
+            try {
+                await sendPasswordResetEmail(auth, email);
+                resetError.textContent = "Password reset email sent.";
+                resetError.style.color = '#1976d2';
+                resetError.style.display = 'block';
+            } catch (err) {
+                resetError.textContent = err.message.replace('Firebase: ', '');
+                resetError.style.color = '#c62828';
+                resetError.style.display = 'block';
             }
         });
     </script>
