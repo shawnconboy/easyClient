@@ -1,0 +1,78 @@
+===============================
+BASIC GIT COMMANDS — SIMPLE GUIDE
+===============================
+
+These are the most common Git commands used when working with a repository.
+
+------------------------------------------------------------
+1. git status
+------------------------------------------------------------
+Shows what's going on in your project folder.
+
+Use it to:
+- See what files have been changed
+- See what files are staged (ready to commit)
+- See what files are not being tracked yet
+
+Command:
+
+    git status
+
+------------------------------------------------------------
+2. git add
+------------------------------------------------------------
+Tells Git which files you want to include in the next commit.
+
+Examples:
+
+    git add filename.txt        → adds just one file
+    git add .                   → adds ALL changed files in the folder
+
+Use after you’ve made changes and want to save them with a commit.
+
+------------------------------------------------------------
+3. git commit
+------------------------------------------------------------
+Saves a snapshot of your added changes.
+
+You must include a message to describe what you did.
+
+Command:
+
+    git commit -m "Your message here"
+
+Example:
+
+    git commit -m "Fixed the login bug"
+
+NOTE: Only changes that were added using `git add` will be committed.
+
+------------------------------------------------------------
+4. git push
+------------------------------------------------------------
+Sends your committed changes to GitHub (or whatever remote you use).
+
+Command:
+
+    git push
+
+If you're working on a specific branch:
+
+    git push origin branch-name
+
+Example:
+
+    git push origin main
+
+This makes your local changes show up on GitHub.
+
+------------------------------------------------------------
+COMMON WORKFLOW (Quick Summary)
+------------------------------------------------------------
+
+    git status                 → check what changed
+    git add .                  → stage everything for commit
+    git commit -m "Message"    → save your changes
+    git push                   → send to GitHub
+
+Done!
