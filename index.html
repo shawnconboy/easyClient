@@ -39,23 +39,18 @@
             </header>
             <section class="content">
                 <h2>All Companies</h2>
-                <div class="cards">
-                    <div class="card">
-                        <h3>Better Lawn Co. LLC</h3>
-                        <div class="cardOwner">
-                            <p>Owner</p>
-                            <p>David Ortiz</p>
-                        </div>
-                        <button>View</button>
-                    </div>
+                <div class="cards" id="dashboard-companies-cards">
+                    <!-- Company cards will be injected here -->
                 </div>
+                <button id="see-all-companies-btn" class="logout-btn"
+                    style="margin-top:1em; background:#1976d2; color:#fff;">See All</button>
             </section>
         </main>
     </div>
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
         import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
-        import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+        import { getFirestore, doc, getDoc, collection, getDocs, query, limit } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
         // Unified Firebase config (replace with your actual config if needed)
         const firebaseConfig = {
@@ -133,6 +128,40 @@
                 hideUserModal();
             }
         });
+
+        // Fetch and display a few companies on the dashboard
+        async function loadDashboardCompanies() {
+            const cardsContainer = document.getElementById('dashboard-companies-cards');
+            cardsContainer.innerHTML = '<p>Loading...</p>';
+            try {
+                const companiesQuery = query(collection(db, "companies"), limit(3));
+                const querySnapshot = await getDocs(companiesQuery);
+                let html = '';
+                querySnapshot.forEach(docSnap => {
+                    const data = docSnap.data();
+                    html += `
+                        <div class="card">
+                            <h3>${data.name || 'Unnamed Company'}</h3>
+                            <div class="cardOwner">
+                                <p>Owner</p>
+                                <p>${data.ownerName || 'Unknown'}</p>
+                            </div>
+                            <button onclick="window.location.href='companies.html?id=${docSnap.id}'">View</button>
+                        </div>
+                    `;
+                });
+                cardsContainer.innerHTML = html || '<p>No companies found.</p>';
+            } catch (e) {
+                cardsContainer.innerHTML = '<p>Error loading companies.</p>';
+            }
+        }
+
+        loadDashboardCompanies();
+
+        // See All button
+        document.getElementById('see-all-companies-btn').onclick = () => {
+            window.location.href = 'companies.html';
+        };
     </script>
 </body>
 
