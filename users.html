@@ -1,0 +1,101 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Users - Easy Client</title>
+    <link rel="stylesheet" href="style.css" />
+    <style>
+        .user-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+            margin-top: 2em;
+        }
+        .user-table th, .user-table td {
+            padding: 1em;
+            border-bottom: 1px solid #e0e0e0;
+            text-align: left;
+        }
+        .user-table th {
+            background: #f7f7f7;
+            font-weight: 600;
+        }
+        .user-table tr:last-child td {
+            border-bottom: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <aside class="sidebar">
+            <h2>Easy Client</h2>
+            <nav>
+                <a href="index.html">Dashboard</a>
+                <a href="companies.html">Companies</a>
+                <a href="users.html" class="active">Users</a>
+                <a href="settings.html">Settings</a>
+                <a href="landing.html">Landing Page</a>
+            </nav>
+        </aside>
+        <main class="main">
+            <header class="topbar">
+                <h1>Users</h1>
+            </header>
+            <section class="content">
+                <table class="user-table" id="users-table">
+                    <thead>
+                        <tr>
+                            <th>Company Name</th>
+                            <th>Owner Name</th>
+                            <th>Owner Phone</th>
+                            <th>Owner Email</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- User rows will be rendered here -->
+                    </tbody>
+                </table>
+            </section>
+        </main>
+    </div>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+        import { getFirestore, collection, getDocs, query, where } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyA9iKdL-7YCBWrqbBmLFkw--pS0kET7qZc",
+            authDomain: "easyclient-ac627.firebaseapp.com",
+            projectId: "easyclient-ac627",
+            storageBucket: "easyclient-ac627.firebasestorage.app",
+            messagingSenderId: "247790149498",
+            appId: "1:247790149498:web:6d03859eaa5394f17fc0c3",
+            measurementId: "G-SF966FYKGB"
+        };
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        async function renderUsers() {
+            const tableBody = document.querySelector('#users-table tbody');
+            tableBody.innerHTML = '';
+            // Fetch all companies
+            const companiesSnap = await getDocs(collection(db, 'companies'));
+            companiesSnap.forEach(docSnap => {
+                const company = docSnap.data();
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${company.name || ''}</td>
+                    <td>${company.ownerName || company.owner || ''}</td>
+                    <td>${company.ownerPhone || ''}</td>
+                    <td>${company.ownerEmail || ''}</td>
+                `;
+                tableBody.appendChild(row);
+            });
+        }
+        renderUsers();
+    </script>
+</body>
+</html>
