@@ -46,7 +46,7 @@
 
         @media (max-width: 700px) {
             .users-header {
-                display: none;
+                display: none !important;
             }
 
             .user-card {
@@ -67,6 +67,13 @@
                 color: #1976d2;
                 font-weight: 600;
                 margin-bottom: 0.2em;
+                display: block;
+            }
+        }
+
+        @media (min-width: 701px) {
+            .user-card-label {
+                display: none;
             }
         }
     </style>
@@ -89,11 +96,14 @@
                 <h1>Users</h1>
             </header>
             <section class="content">
-                <div class="users-header" id="users-header">
+                <div class="users-header" id="users-header"
+                    style="display:grid; align-items:center; position:relative;">
                     <div>Company Name</div>
                     <div>Owner Name</div>
                     <div>Owner Phone</div>
                     <div>Owner Email</div>
+                    <span id="company-count"
+                        style="position:absolute; right:1.5em; top:1em; color:#1976d2; font-weight:500; font-size:1em;"></span>
                 </div>
                 <div class="users-list" id="users-list">
                     <!-- User cards will be rendered here -->
@@ -121,7 +131,9 @@
             const usersList = document.getElementById('users-list');
             usersList.innerHTML = '';
             const companiesSnap = await getDocs(collection(db, 'companies'));
+            let count = 0;
             companiesSnap.forEach(docSnap => {
+                count++;
                 const company = docSnap.data();
                 const card = document.createElement('div');
                 card.className = 'user-card';
@@ -145,6 +157,7 @@
                 `;
                 usersList.appendChild(card);
             });
+            document.getElementById('company-count').textContent = `Total: ${count}`;
         }
         renderUsers();
     </script>
