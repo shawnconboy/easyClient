@@ -76,6 +76,45 @@
                 display: none;
             }
         }
+
+        .user-box {
+            margin-left: auto;
+            display: flex;
+            align-items: center;
+            gap: 1em;
+        }
+
+        .user-modal {
+            display: none;
+            position: absolute;
+            right: 1.5em;
+            top: 3.5em;
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+        }
+
+        .user-modal-inner {
+            padding: 1em;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5em;
+        }
+
+        .logout-btn {
+            background: #d32f2f;
+            color: #fff;
+            border: none;
+            padding: 0.5em 1em;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .logout-btn:hover {
+            background: #c62828;
+        }
     </style>
 </head>
 
@@ -94,6 +133,18 @@
         <main class="main">
             <header class="topbar">
                 <h1>Users</h1>
+                <div class="user-box" id="user-box">
+                    <button id="auth-btn" title="Sign in">
+                        Sign In
+                    </button>
+                </div>
+                <!-- User modal -->
+                <div id="user-modal" class="user-modal">
+                    <div class="user-modal-inner">
+                        <div id="user-modal-email" class="user-modal-email"></div>
+                        <button id="logout-btn" class="logout-btn">Log Out</button>
+                    </div>
+                </div>
             </header>
             <section class="content">
                 <div class="users-header" id="users-header"
@@ -114,6 +165,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
         import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+        import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyA9iKdL-7YCBWrqbBmLFkw--pS0kET7qZc",
@@ -126,6 +178,66 @@
         };
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
+        const auth = getAuth(app);
+        const authBtn = document.getElementById('auth-btn');
+        const userModal = document.getElementById('user-modal');
+        const userModalEmail = document.getElementById('user-modal-email');
+        const logoutBtn = document.getElementById('logout-btn');
+        let userEmail = "";
+
+        function showUserModal() {
+            userModal.style.display = 'block';
+            userModalEmail.textContent = userEmail;
+            setTimeout(() => {
+                document.addEventListener('mousedown', handleOutsideClick);
+            }, 0);
+        }
+        function hideUserModal() {
+            userModal.style.display = 'none';
+            document.removeEventListener('mousedown', handleOutsideClick);
+        }
+        function handleOutsideClick(e) {
+            if (!userModal.contains(e.target) && e.target !== authBtn) {
+                hideUserModal();
+            }
+        }
+
+        onAuthStateChanged(auth, async user => {
+            if (user) {
+                let displayName = user.displayName;
+                try {
+                    const userDoc = await getDocs(collection(db, "users"));
+                    // ...optional: fetch displayName from userDoc if needed...
+                } catch { }
+                userEmail = user.email;
+                authBtn.textContent = displayName || user.email;
+                authBtn.title = "Account";
+                authBtn.style.background = "#1976d2";
+                authBtn.style.color = "#fff";
+                authBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    if (userModal.style.display === 'block') {
+                        hideUserModal();
+                    } else {
+                        showUserModal();
+                    }
+                };
+                logoutBtn.onclick = async () => {
+                    await signOut(auth);
+                    hideUserModal();
+                };
+            } else {
+                userEmail = "";
+                authBtn.textContent = "Sign In";
+                authBtn.title = "Sign in";
+                authBtn.onclick = () => {
+                    window.location.href = `login.html?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`;
+                };
+                authBtn.style.background = "#1976d2";
+                authBtn.style.color = "#fff";
+                hideUserModal();
+            }
+        });
 
         async function renderUsers() {
             const usersList = document.getElementById('users-list');
