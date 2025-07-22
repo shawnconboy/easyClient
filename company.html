@@ -224,7 +224,7 @@
             <nav>
                 <a href="index.html">Dashboard</a>
                 <a href="companies.html">Companies</a>
-                <a href="users.html" class="active">Users</a>
+                <a href="users.html">Users</a>
                 <a href="settings.html">Settings</a>
                 <a href="landing.html">Landing Page</a>
             </nav>
@@ -563,6 +563,24 @@
                 hideUserModal();
             }
         });
+
+        // Sidebar active tab logic
+        (() => {
+            const path = window.location.pathname;
+            const navLinks = document.querySelectorAll('.sidebar nav a');
+            navLinks.forEach(link => link.classList.remove('active'));
+            if (path.endsWith('index.html')) {
+                document.querySelector('.sidebar nav a[href="index.html"]')?.classList.add('active');
+            } else if (path.endsWith('companies.html') || path.endsWith('company.html')) {
+                document.querySelector('.sidebar nav a[href="companies.html"]')?.classList.add('active');
+            } else if (path.endsWith('users.html')) {
+                document.querySelector('.sidebar nav a[href="users.html"]')?.classList.add('active');
+            } else if (path.endsWith('settings.html')) {
+                document.querySelector('.sidebar nav a[href="settings.html"]')?.classList.add('active');
+            } else if (path.endsWith('landing.html')) {
+                document.querySelector('.sidebar nav a[href="landing.html"]')?.classList.add('active');
+            }
+        })();
 
         renderCompany();
     </script>
