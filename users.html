@@ -40,6 +40,15 @@
             transition: box-shadow 0.2s;
         }
 
+        /* Alternating row colors */
+        .users-list .user-card:nth-child(even) {
+            background: #f3f7fc;
+        }
+
+        .users-list .user-card:nth-child(odd) {
+            background: #fff;
+        }
+
         .user-card:hover {
             box-shadow: 0 4px 16px rgba(25, 118, 210, 0.10);
         }
