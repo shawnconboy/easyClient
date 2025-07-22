@@ -38,12 +38,24 @@
                 </div>
             </header>
             <section class="content">
-                <h2>Settings</h2>
-                <div class="settings-placeholder section-space">
-                    <p>
-                        Settings page placeholder.<br>
-                        Here you’ll be able to manage your account, preferences, and app configuration.
-                    </p>
+                <!-- User Info Section -->
+                <div id="user-info-section" class="card section-space"
+                    style="display:none; max-width:400px; margin-bottom:2em;">
+                    <h3 style="margin-top:0; color:#1976d2;">Your Account</h3>
+                    <div class="form-row" style="margin-bottom:1em;">
+                        <label style="font-weight:600; color:#555;">Name:</label>
+                        <span id="user-info-name" style="margin-left:0.5em; color:#222;"></span>
+                    </div>
+                    <div class="form-row" style="margin-bottom:1em;">
+                        <label style="font-weight:600; color:#555;">Email:</label>
+                        <span id="user-info-email" style="margin-left:0.5em; color:#222;"></span>
+                    </div>
+                    <button id="reset-password-btn" class="btn"
+                        style="margin-top:0.5em; background:#1976d2; color:#fff; border:none; padding:0.5em 1.2em; border-radius:4px; cursor:pointer;">
+                        Reset Password
+                    </button>
+                    <div id="reset-password-msg" style="margin-top:0.75em; font-size:0.95em; display:none;">
+                    </div>
                 </div>
             </section>
         </main>
@@ -73,6 +85,14 @@
         const userModal = document.getElementById('user-modal');
         const userModalEmail = document.getElementById('user-modal-email');
         const logoutBtn = document.getElementById('logout-btn');
+
+        // User info section elements
+        const userInfoSection = document.getElementById('user-info-section');
+        const userInfoName = document.getElementById('user-info-name');
+        const userInfoEmail = document.getElementById('user-info-email');
+        const resetPasswordBtn = document.getElementById('reset-password-btn');
+        const resetPasswordMsg = document.getElementById('reset-password-msg');
+
         let userEmail = "";
 
         function showUserModal() {
@@ -118,6 +138,25 @@
                     await signOut(auth);
                     hideUserModal();
                 };
+
+                // Show user info section
+                userInfoSection.style.display = "block";
+                userInfoName.textContent = displayName || "(not set)";
+                userInfoEmail.textContent = user.email;
+
+                resetPasswordBtn.onclick = async () => {
+                    resetPasswordMsg.style.display = "none";
+                    resetPasswordMsg.style.color = "#1976d2";
+                    try {
+                        await auth.sendPasswordResetEmail(user.email);
+                        resetPasswordMsg.textContent = "Password reset email sent!";
+                        resetPasswordMsg.style.display = "block";
+                    } catch (err) {
+                        resetPasswordMsg.textContent = "Error sending reset email.";
+                        resetPasswordMsg.style.display = "block";
+                        resetPasswordMsg.style.color = "red";
+                    }
+                };
             } else {
                 userEmail = "";
                 authBtn.textContent = "Sign In";
@@ -128,6 +167,7 @@
                 authBtn.style.background = "#1976d2";
                 authBtn.style.color = "#fff";
                 hideUserModal();
+                userInfoSection.style.display = "none";
             }
         });
     </script>
