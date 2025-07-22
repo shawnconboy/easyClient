@@ -1,34 +1,77 @@
-
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Users - Easy Client</title>
     <link rel="stylesheet" href="style.css" />
     <style>
-        .user-table {
-            width: 100%;
-            border-collapse: collapse;
-            background: #fff;
-            border-radius: 12px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.07);
-            margin-top: 2em;
-        }
-        .user-table th, .user-table td {
-            padding: 1em;
-            border-bottom: 1px solid #e0e0e0;
-            text-align: left;
-        }
-        .user-table th {
+        .users-header {
+            display: grid;
+            grid-template-columns: 2fr 1.5fr 1.5fr 2fr;
+            gap: 1em;
             background: #f7f7f7;
             font-weight: 600;
+            color: #1976d2;
+            padding: 1em 1.5em;
+            border-radius: 10px;
+            margin-top: 2em;
+            margin-bottom: 0.5em;
+            box-shadow: 0 1px 4px rgba(25, 118, 210, 0.06);
         }
-        .user-table tr:last-child td {
-            border-bottom: none;
+
+        .users-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.7em;
+        }
+
+        .user-card {
+            display: grid;
+            grid-template-columns: 2fr 1.5fr 1.5fr 2fr;
+            gap: 1em;
+            align-items: center;
+            background: #fff;
+            border-radius: 10px;
+            box-shadow: 0 1px 4px rgba(25, 118, 210, 0.06);
+            padding: 0.8em 1.5em;
+            font-size: 1em;
+            transition: box-shadow 0.2s;
+        }
+
+        .user-card:hover {
+            box-shadow: 0 4px 16px rgba(25, 118, 210, 0.10);
+        }
+
+        @media (max-width: 700px) {
+            .users-header {
+                display: none;
+            }
+
+            .user-card {
+                display: flex;
+                flex-direction: column;
+                gap: 0.5em;
+                padding: 1em;
+            }
+
+            .user-card>div {
+                width: 100%;
+                display: flex;
+                flex-direction: column;
+            }
+
+            .user-card-label {
+                font-size: 0.95em;
+                color: #1976d2;
+                font-weight: 600;
+                margin-bottom: 0.2em;
+            }
         }
     </style>
 </head>
+
 <body>
     <div class="container">
         <aside class="sidebar">
@@ -46,25 +89,21 @@
                 <h1>Users</h1>
             </header>
             <section class="content">
-                <table class="user-table" id="users-table">
-                    <thead>
-                        <tr>
-                            <th>Company Name</th>
-                            <th>Owner Name</th>
-                            <th>Owner Phone</th>
-                            <th>Owner Email</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <!-- User rows will be rendered here -->
-                    </tbody>
-                </table>
+                <div class="users-header" id="users-header">
+                    <div>Company Name</div>
+                    <div>Owner Name</div>
+                    <div>Owner Phone</div>
+                    <div>Owner Email</div>
+                </div>
+                <div class="users-list" id="users-list">
+                    <!-- User cards will be rendered here -->
+                </div>
             </section>
         </main>
     </div>
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
-        import { getFirestore, collection, getDocs, query, where } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+        import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyA9iKdL-7YCBWrqbBmLFkw--pS0kET7qZc",
@@ -79,23 +118,36 @@
         const db = getFirestore(app);
 
         async function renderUsers() {
-            const tableBody = document.querySelector('#users-table tbody');
-            tableBody.innerHTML = '';
-            // Fetch all companies
+            const usersList = document.getElementById('users-list');
+            usersList.innerHTML = '';
             const companiesSnap = await getDocs(collection(db, 'companies'));
             companiesSnap.forEach(docSnap => {
                 const company = docSnap.data();
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                    <td>${company.name || ''}</td>
-                    <td>${company.ownerName || company.owner || ''}</td>
-                    <td>${company.ownerPhone || ''}</td>
-                    <td>${company.ownerEmail || ''}</td>
+                const card = document.createElement('div');
+                card.className = 'user-card';
+                card.innerHTML = `
+                    <div>
+                        <span class="user-card-label">Company Name</span>
+                        <span>${company.name || ''}</span>
+                    </div>
+                    <div>
+                        <span class="user-card-label">Owner Name</span>
+                        <span>${company.ownerName || company.owner || ''}</span>
+                    </div>
+                    <div>
+                        <span class="user-card-label">Owner Phone</span>
+                        <span>${company.ownerPhone || ''}</span>
+                    </div>
+                    <div>
+                        <span class="user-card-label">Owner Email</span>
+                        <span>${company.ownerEmail || ''}</span>
+                    </div>
                 `;
-                tableBody.appendChild(row);
+                usersList.appendChild(card);
             });
         }
         renderUsers();
     </script>
 </body>
+
 </html>
