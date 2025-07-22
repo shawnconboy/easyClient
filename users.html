@@ -247,6 +247,10 @@
             companiesSnap.forEach(docSnap => {
                 count++;
                 const company = docSnap.data();
+                const owner =
+                    (company.ownerName && company.ownerName.trim() !== "") ? company.ownerName :
+                        (company.owner && company.owner.trim() !== "") ? company.owner :
+                            "N/A";
                 const card = document.createElement('div');
                 card.className = 'user-card';
                 card.innerHTML = `
@@ -256,7 +260,7 @@
                     </div>
                     <div>
                         <span class="user-card-label">Owner Name</span>
-                        <span>${company.ownerName || company.owner || ''}</span>
+                        <span>${owner}</span>
                     </div>
                     <div>
                         <span class="user-card-label">Owner Phone</span>

@@ -263,8 +263,10 @@
             querySnapshot.forEach(docSnap => {
                 companyCount++;
                 const company = docSnap.data();
-                // If you add a revenue field to company, sum it here:
-                // totalRevenue += company.revenue || 0;
+                const owner =
+                    (company.ownerName && company.ownerName.trim() !== "") ? company.ownerName :
+                        (company.owner && company.owner.trim() !== "") ? company.owner :
+                            "N/A";
                 const card = document.createElement('div');
                 card.className = 'card';
                 card.innerHTML = `
@@ -273,7 +275,7 @@
                     </h3>
                     <div class="cardOwner">
                         <p>Owner</p>
-                        <p>${company.owner}</p>
+                        <p>${owner}</p>
                     </div>
                     <a href="company.html?id=${docSnap.id}">
                         <button>View</button>
