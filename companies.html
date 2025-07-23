@@ -135,19 +135,10 @@
 </head>
 
 <body>
-
     <div class="container">
-        <aside class="sidebar">
-            <h2>Easy Client</h2>
-            <nav>
-                <a href="index.html">Dashboard</a>
-                <a href="companies.html" class="active">Companies</a>
-                <a href="users.html">Users</a>
-                <a href="settings.html">Settings</a>
-                <a href="landing.html">Landing Page</a>
-            </nav>
+        <aside class="sidebar" id="sidebar">
+            <!-- Sidebar will be rendered by JS -->
         </aside>
-
         <main class="main">
             <header class="topbar">
                 <h1>Company Manager</h1>
@@ -334,6 +325,9 @@
         const userModal = document.getElementById('user-modal');
         const userModalEmail = document.getElementById('user-modal-email');
         const logoutBtn = document.getElementById('logout-btn');
+
+        // Reference the "See as Business Owner" button by id
+        const viewAsOwnerBtn = document.getElementById('see-as-owner-btn');
         let userEmail = "";
 
         function showUserModal() {
@@ -379,6 +373,18 @@
                     await signOut(auth);
                     hideUserModal();
                 };
+                // Check if user is admin
+                let isAdmin = false;
+                try {
+                    const userDoc = await getDoc(doc(db, "users", user.uid));
+                    if (userDoc.exists() && userDoc.data().role === "admin") {
+                        isAdmin = true;
+                    }
+                } catch { }
+                if (viewAsOwnerBtn) {
+                    viewAsOwnerBtn.style.display = isAdmin ? 'inline-block' : 'none';
+                    viewAsOwnerBtn.disabled = !isAdmin;
+                }
             } else {
                 userEmail = "";
                 authBtn.textContent = "Sign In";
@@ -389,6 +395,56 @@
                 authBtn.style.background = "#1976d2";
                 authBtn.style.color = "#fff";
                 hideUserModal();
+                if (viewAsOwnerBtn) {
+                    viewAsOwnerBtn.style.display = 'none';
+                    viewAsOwnerBtn.disabled = true;
+                }
+            }
+        });
+
+        const sidebar = document.getElementById('sidebar');
+        function renderSidebar(role) {
+            if (role === 'owner') {
+                sidebar.innerHTML = `
+                    <h2>Easy Client</h2>
+                    <nav>
+                        <a href="owner-dashboard.html">Dashboard</a>
+                        <a href="clients.html">Clients</a>
+                        <a href="settings.html">Settings</a>
+                    </nav>
+                `;
+            } else {
+                sidebar.innerHTML = `
+                    <h2>Easy Client</h2>
+                    <nav>
+                        <a href="index.html">Dashboard</a>
+                        <a href="companies.html" class="active">Companies</a>
+                        <a href="users.html">Users</a>
+                        <a href="settings.html">Settings</a>
+                        <a href="landing.html">Landing Page</a>
+                    </nav>
+                `;
+            }
+        }
+
+        onAuthStateChanged(auth, async user => {
+            if (user) {
+                let role = 'admin';
+                try {
+                    const userDoc = await getDoc(doc(db, "users", user.uid));
+                    if (userDoc.exists() && userDoc.data().role) {
+                        role = userDoc.data().role;
+                    }
+                } catch { }
+                renderSidebar(role);
+                if (role === 'owner') {
+                    window.location.href = 'owner-dashboard.html';
+                    return;
+                }
+                // ...existing code...
+            } else {
+                renderSidebar('admin');
+                // ...existing code...
             }
         });
     </script>
