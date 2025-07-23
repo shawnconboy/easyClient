@@ -214,10 +214,22 @@
         onAuthStateChanged(auth, async user => {
             if (user) {
                 let displayName = user.displayName;
+                let role = null;
                 try {
                     const userDoc = await getDocs(collection(db, "users"));
-                    // ...optional: fetch displayName from userDoc if needed...
+                    userDoc.forEach(docSnap => {
+                        if (docSnap.id === user.uid) {
+                            const data = docSnap.data();
+                            if (data.name) displayName = data.name;
+                            role = data.role;
+                        }
+                    });
                 } catch { }
+                // Only allow admin or owner
+                if (role !== "admin" && role !== "owner") {
+                    window.location.href = "landing.html";
+                    return;
+                }
                 userEmail = user.email;
                 authBtn.textContent = displayName || user.email;
                 authBtn.title = "Account";
@@ -236,15 +248,7 @@
                     hideUserModal();
                 };
             } else {
-                userEmail = "";
-                authBtn.textContent = "Sign In";
-                authBtn.title = "Sign in";
-                authBtn.onclick = () => {
-                    window.location.href = `login.html?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`;
-                };
-                authBtn.style.background = "#1976d2";
-                authBtn.style.color = "#fff";
-                hideUserModal();
+                window.location.href = "landing.html";
             }
         });
 
