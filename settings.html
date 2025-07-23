@@ -10,15 +10,8 @@
 
 <body>
     <div class="container">
-        <aside class="sidebar">
-            <h2>Easy Client</h2>
-            <nav>
-                <a href="index.html">Dashboard</a>
-                <a href="companies.html">Companies</a>
-                <a href="users.html">Users</a>
-                <a href="settings.html" class="active">Settings</a>
-                <a href="landing.html">Landing Page</a>
-            </nav>
+        <aside class="sidebar" id="sidebar">
+            <!-- Sidebar will be rendered by JS -->
         </aside>
         <main class="main">
             <header class="topbar">
@@ -112,8 +105,41 @@
             }
         }
 
+        const sidebar = document.getElementById('sidebar');
+        function renderSidebar(role) {
+            if (role === 'owner') {
+                sidebar.innerHTML = `
+                    <h2>Easy Client</h2>
+                    <nav>
+                        <a href="owner-dashboard.html">Dashboard</a>
+                        <a href="clients.html">Clients</a>
+                        <a href="settings.html" class="active">Settings</a>
+                    </nav>
+                `;
+            } else {
+                sidebar.innerHTML = `
+                    <h2>Easy Client</h2>
+                    <nav>
+                        <a href="index.html">Dashboard</a>
+                        <a href="companies.html">Companies</a>
+                        <a href="users.html">Users</a>
+                        <a href="settings.html" class="active">Settings</a>
+                        <a href="landing.html">Landing Page</a>
+                    </nav>
+                `;
+            }
+        }
+
         onAuthStateChanged(auth, async user => {
             if (user) {
+                let role = 'admin';
+                try {
+                    const userDoc = await getDoc(doc(db, "users", user.uid));
+                    if (userDoc.exists() && userDoc.data().role) {
+                        role = userDoc.data().role;
+                    }
+                } catch { }
+                renderSidebar(role);
                 let displayName = user.displayName;
                 let role = null;
                 try {
@@ -166,7 +192,20 @@
                     }
                 };
             } else {
+ limitSiteForNonUsers-Shawn
                 window.location.href = "landing.html";
+
+                renderSidebar('admin');
+                userEmail = "";
+                authBtn.textContent = "Sign In";
+                authBtn.title = "Sign in";
+                authBtn.onclick = () => {
+                    window.location.href = `login.html?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`;
+                };
+                authBtn.style.background = "#1976d2";
+                authBtn.style.color = "#fff";
+                hideUserModal();
+ main
                 userInfoSection.style.display = "none";
             }
         });

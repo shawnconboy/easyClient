@@ -10,15 +10,8 @@
 
 <body>
     <div class="container">
-        <aside class="sidebar">
-            <h2>Easy Client</h2>
-            <nav>
-                <a href="index.html" class="active">Dashboard</a>
-                <a href="companies.html">Companies</a>
-                <a href="users.html">Users</a>
-                <a href="settings.html">Settings</a>
-                <a href="landing.html">Landing Page</a>
-            </nav>
+        <aside class="sidebar" id="sidebar">
+            <!-- Sidebar will be rendered by JS -->
         </aside>
         <main class="main">
             <header class="topbar">
@@ -71,6 +64,7 @@
         const userModal = document.getElementById('user-modal');
         const userModalEmail = document.getElementById('user-modal-email');
         const logoutBtn = document.getElementById('logout-btn');
+        const sidebar = document.getElementById('sidebar');
         let userEmail = "";
 
         function showUserModal() {
@@ -90,8 +84,44 @@
             }
         }
 
+        function renderSidebar(role) {
+            if (role === 'owner') {
+                sidebar.innerHTML = `
+                    <h2>Easy Client</h2>
+                    <nav>
+                        <a href="owner-dashboard.html" class="active">Dashboard</a>
+                        <a href="clients.html">Clients</a>
+                        <a href="settings.html">Settings</a>
+                    </nav>
+                `;
+            } else {
+                sidebar.innerHTML = `
+                    <h2>Easy Client</h2>
+                    <nav>
+                        <a href="index.html" class="active">Dashboard</a>
+                        <a href="companies.html">Companies</a>
+                        <a href="users.html">Users</a>
+                        <a href="settings.html">Settings</a>
+                        <a href="landing.html">Landing Page</a>
+                    </nav>
+                `;
+            }
+        }
+
         onAuthStateChanged(auth, async user => {
             if (user) {
+                let role = 'admin';
+                try {
+                    const userDoc = await getDoc(doc(db, "users", user.uid));
+                    if (userDoc.exists() && userDoc.data().role) {
+                        role = userDoc.data().role;
+                    }
+                } catch { }
+                renderSidebar(role);
+                if (role === 'owner') {
+                    window.location.href = 'owner-dashboard.html';
+                    return;
+                }
                 let displayName = user.displayName;
                 let role = null;
                 try {
@@ -125,7 +155,20 @@
                     hideUserModal();
                 };
             } else {
+limitSiteForNonUsers-Shawn
                 window.location.href = "landing.html";
+
+                renderSidebar('admin');
+                userEmail = "";
+                authBtn.textContent = "Sign In";
+                authBtn.title = "Sign in";
+                authBtn.onclick = () => {
+                    window.location.href = `login.html?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`;
+                };
+                authBtn.style.background = "#1976d2";
+                authBtn.style.color = "#fff";
+                hideUserModal();
+ main
             }
         });
 
