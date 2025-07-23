@@ -299,3 +299,46 @@ html {
 .logout-btn:hover {
     background: #c62828;
 }
+
+.remove-service-btn {
+    background: #e53935 !important;
+    color: #fff !important;
+    border: none;
+    border-radius: 8px;
+    font-size: 1.2em;
+    font-weight: bold;
+    cursor: pointer;
+    width: 2.5em;
+    height: 2.5em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s;
+    margin: 0;
+}
+
+.remove-service-btn:hover {
+    background: #b71c1c !important;
+    color: #fff !important;
+}
+
+#toast {
+    position: fixed;
+    top: 2em;
+    right: 2em;
+    background: #1976d2;
+    color: #fff;
+    padding: 1em 2em;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(25, 118, 210, 0.15);
+    font-size: 1em;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s;
+    z-index: 9999;
+}
+
+#toast.show {
+    opacity: 1;
+    pointer-events: auto;
+}

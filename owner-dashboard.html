@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Business Owner Dashboard</title>
+    <title>Owner Dashboard – Easy Client</title>
     <link rel="stylesheet" href="style.css" />
     <style>
         /* Reuse company-card and form styles from company.html */
@@ -117,176 +117,221 @@
         .services-list-row {
             display: flex;
             align-items: center;
-            gap: 0.7em;
+            gap: 1em;
             margin-bottom: 0.5em;
             width: 100%;
+            background: none;
+            border-radius: 8px;
+            padding: 0;
         }
 
-        .service-name-input {
-            flex: 3 1 0;
+        .service-name-input,
+        .service-price-input {
+            flex: 1 1 0;
             min-width: 0;
-            padding: 0.5em 0.8em;
+            padding: 0.75em 1em;
             border: 1px solid #e0e0e0;
-            border-radius: 7px;
+            border-radius: 8px;
             font-size: 1em;
             background: #f7f7f7;
+            transition: border-color 0.2s;
+            text-align: left;
+            margin: 0;
         }
 
         .service-price-input {
-            flex: 1 1 110px;
-            min-width: 110px;
-            max-width: 110px;
-            padding: 0.5em 0.8em;
-            border: 1px solid #e0e0e0;
-            border-radius: 7px;
-            font-size: 1em;
-            background: #f7f7f7;
             text-align: right;
+            max-width: 110px;
         }
 
-        .remove-service-btn,
         .add-service-btn {
-            background: #e57373;
+            background: #1976d2;
             color: #fff;
             border: none;
-            border-radius: 6px;
-            font-size: 1.1em;
+            border-radius: 8px;
+            font-size: 1.2em;
             font-weight: bold;
             cursor: pointer;
             width: 2.5em;
-            min-width: 2.5em;
-            max-width: 2.5em;
             height: 2.5em;
             display: flex;
             align-items: center;
             justify-content: center;
             transition: background 0.2s;
-            padding: 0;
-            letter-spacing: 0.1em;
-        }
-
-        .add-service-btn {
-            background: #1976d2;
-        }
-
-        .remove-service-btn:hover {
-            background: #c62828;
+            margin: 0;
         }
 
         .add-service-btn:hover {
             background: #1565c0;
         }
 
+        .remove-service-btn {
+            background: #e57373;
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.2em;
+            font-weight: bold;
+            cursor: pointer;
+            width: 2.5em;
+            height: 2.5em;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s;
+            margin: 0;
+        }
+
+        .remove-service-btn:hover {
+            background: #c62828;
+        }
+
         #add-service-form {
             display: flex;
             align-items: center;
-            gap: 0.7em;
+            gap: 1em;
             margin-bottom: 1em;
+            width: 100%;
+            background: none;
+            border-radius: 8px;
+            padding: 0;
+        }
+
+        #save-services-btn {
+            margin-top: 1em;
+            background: #1976d2;
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            padding: 0.75em 1.5em;
+            font-size: 1em;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.2s;
+            width: fit-content;
+            min-width: 140px;
+            display: block;
+        }
+
+        #save-services-btn:hover {
+            background: #1565c0;
+        }
+
+        .user-modal {
+            display: none;
+            position: absolute;
+            top: 70px;
+            right: 40px;
+            z-index: 2000;
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 2px 12px rgba(25, 118, 210, 0.13);
+            padding: 1.2em 1.5em;
+            min-width: 220px;
+        }
+
+        .user-modal-inner {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 1em;
+        }
+
+        .user-modal-email {
+            color: #1976d2;
+            font-weight: 600;
+            font-size: 1em;
+        }
+
+        .logout-btn {
+            background: #e57373;
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            padding: 0.6em 1.2em;
+            font-size: 1em;
+            font-weight: 500;
+            cursor: pointer;
+            box-shadow: 0 1px 4px rgba(25, 118, 210, 0.08);
             width: 100%;
         }
 
-        @media (max-width: 700px) {
-            .company-card {
-                max-width: 98vw;
-                padding: 1em 0.5em;
-            }
-
-            #services-section form#add-service-form {
-                flex-direction: column;
-                gap: 0.5em;
-            }
-
-            .services-list-row {
-                flex-direction: column;
-                align-items: stretch;
-                gap: 0.5em;
-            }
-
-            .service-price-input {
-                min-width: 0;
-                max-width: 100%;
-            }
-
-            .remove-service-btn,
-            .add-service-btn {
-                width: 100%;
-                min-width: 0;
-                max-width: 100%;
-                height: 2.5em;
-            }
+        .sidebar {
+            /* Sidebar specific styles */
         }
+
+        .topbar {
+            /* Topbar specific styles */
+        }
+
+        .content {
+            /* Content specific styles */
+        }
+
+        .card {
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.07);
+            padding: 2em 2.5em;
+            margin: 2em auto;
+            max-width: 800px;
+            width: 100%;
+        }
+
+        .card h3 {
+            margin-top: 0;
+            font-size: 1.5em;
+            font-weight: 600;
+        }
+
+        /* Add any additional styles needed for the owner dashboard */
     </style>
 </head>
 
 <body>
     <div class="container">
+        <aside class="sidebar">
+            <h2>Easy Client</h2>
+            <nav>
+                <a href="owner-dashboard.html" class="active">Dashboard</a>
+                <a href="clients.html">Clients</a>
+                <a href="settings.html">Settings</a>
+            </nav>
+        </aside>
         <main class="main">
             <header class="topbar">
-                <h1>Business Owner Dashboard</h1>
+                <h1>Business Dashboard</h1>
                 <div class="user-box" id="user-box"
                     style="margin-left:auto; display:flex; align-items:center; gap:1em;">
-                    <button id="auth-btn"
-                        style="color:#1976d2; border:none; border-radius:8px; padding:0.5em 1.5em; font-size:1em; font-weight:500; cursor:pointer; box-shadow:none; transition:background 0.2s;"
-                        title="Sign in">
-                        Sign In
-                    </button>
+                    <button id="auth-btn" title="Sign in">Sign In</button>
                 </div>
                 <!-- User modal -->
-                <div id="user-modal" style="display:none;position:absolute;top:70px;right:40px;z-index:2000;">
-                    <div
-                        style="background:#fff;border-radius:12px;box-shadow:0 2px 12px rgba(25,118,210,0.13);padding:1.2em 1.5em;min-width:220px;display:flex;flex-direction:column;align-items:flex-start;gap:1em;">
-                        <div id="user-modal-email" style="color:#1976d2;font-weight:600;font-size:1em;"></div>
-                        <button id="logout-btn"
-                            style="background:#e57373;color:#fff;border:none;border-radius:8px;padding:0.6em 1.2em;font-size:1em;font-weight:500;cursor:pointer;box-shadow:0 1px 4px rgba(25,118,210,0.08);width:100%;">
-                            Log Out
-                        </button>
+                <div id="user-modal" class="user-modal">
+                    <div class="user-modal-inner">
+                        <div id="user-modal-email" class="user-modal-email"></div>
+                        <button id="logout-btn" class="logout-btn">Log Out</button>
                     </div>
                 </div>
             </header>
             <section class="content">
-                <div id="company-select-section">
-                    <label for="company-select">Select Your Company:</label>
-                    <select id="company-select"></select>
-                    <button id="load-company-btn" style="margin-left:1em;">Load</button>
+                <div id="company-info" class="card" style="margin-bottom:2em;">
+                    <!-- Company info will be loaded here -->
                 </div>
-                <div class="company-card" id="company-card" style="display:none;">
-                    <h2 id="company-title"></h2>
-                    <form id="edit-company-form">
-                        <div class="company-fields">
-                            <label for="company-name">Company Name</label>
-                            <input type="text" id="company-name" name="name" required />
-
-                            <label for="company-owner">Owner</label>
-                            <input type="text" id="company-owner" name="owner" required />
-
-                            <label for="company-ownerPhone">Owner Phone</label>
-                            <input type="text" id="company-ownerPhone" name="ownerPhone" />
-
-                            <label for="company-ownerEmail">Owner Email</label>
-                            <input type="email" id="company-ownerEmail" name="ownerEmail" />
-                        </div>
-                        <div class="company-actions">
-                            <button type="submit">Save</button>
-                            <button type="button" class="cancel">Cancel</button>
-                        </div>
+                <div id="services-section" class="card section-space" style="max-width:650px; margin-bottom:2em;">
+                    <h3 style="margin-top:0; color:#222; font-size:1.15em; font-weight:600;">Services</h3>
+                    <form id="add-service-form">
+                        <input type="text" id="service-name" placeholder="Add new service..." required
+                            class="service-name-input" />
+                        <input type="number" id="service-price" placeholder="Price" required
+                            class="service-price-input" />
+                        <button type="submit" class="add-service-btn" title="Add Service">+</button>
                     </form>
-                    <div id="services-section" style="margin-top:2em;">
-                        <h3 style="margin-bottom:0.7em;">Services</h3>
-                        <form id="add-service-form">
-                            <input type="text" id="new-service-input" placeholder="Add new service..."
-                                class="service-name-input" />
-                            <input type="number" id="new-service-price-input" placeholder="Price"
-                                class="service-price-input" />
-                            <button id="add-service-btn" type="submit" class="add-service-btn" title="Add">+</button>
-                        </form>
-                        <ul id="services-list" style="list-style:none; padding:0; margin-bottom:1em;"></ul>
-                        <div style="margin-top:1em;">
-                            <button id="save-services-btn"
-                                style="padding:0.6em 1.2em; background:#1976d2; color:#fff; border:none; border-radius:8px; font-size:1em; font-weight:500; cursor:pointer;">
-                                Save Services
-                            </button>
+                    <form id="services-list-form">
+                        <div id="services-list">
+                            <!-- Service rows will be rendered here -->
                         </div>
-                    </div>
+                        <button type="submit" id="save-services-btn">Save Services</button>
+                    </form>
                 </div>
                 <div id="toast"></div>
             </section>
@@ -294,8 +339,8 @@
     </div>
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
-        import { getFirestore, collection, getDocs, doc, getDoc, updateDoc } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
         import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+        import { getFirestore, collection, query, where, getDocs, doc, updateDoc, arrayUnion, arrayRemove, getDoc } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyA9iKdL-7YCBWrqbBmLFkw--pS0kET7qZc",
@@ -308,176 +353,15 @@
         };
 
         const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
         const auth = getAuth(app);
+        const db = getFirestore(app);
 
-        let selectedCompanyId = null;
-        let originalServices = [];
-        let currentServices = [];
-
-        function showToast(message) {
-            const toast = document.getElementById('toast');
-            toast.textContent = message;
-            toast.classList.add('show');
-            setTimeout(() => {
-                toast.classList.remove('show');
-            }, 2000);
-        }
-
-        // Populate company select dropdown
-        async function loadCompanies() {
-            const select = document.getElementById('company-select');
-            select.innerHTML = '';
-            const querySnapshot = await getDocs(collection(db, 'companies'));
-            querySnapshot.forEach(docSnap => {
-                const company = docSnap.data();
-                const option = document.createElement('option');
-                option.value = docSnap.id;
-                option.textContent = company.name;
-                select.appendChild(option);
-            });
-        }
-
-        // Load selected company details
-        async function renderCompany(id) {
-            if (!id) return;
-            const docRef = doc(db, 'companies', id);
-            const docSnap = await getDoc(docRef);
-            if (!docSnap.exists()) {
-                showToast('Company not found');
-                return;
-            }
-            const company = docSnap.data();
-            document.getElementById('company-title').textContent = company.name;
-            document.getElementById('company-name').value = company.name;
-            document.getElementById('company-owner').value = company.owner;
-            document.getElementById('company-ownerPhone').value = company.ownerPhone;
-            document.getElementById('company-ownerEmail').value = company.ownerEmail;
-            originalServices = Array.isArray(company.services)
-                ? company.services.map(s => typeof s === "string" ? { name: s, price: "" } : s)
-                : [];
-            currentServices = originalServices.map(s => ({ ...s }));
-            renderServicesList();
-            document.getElementById('company-card').style.display = 'block';
-        }
-
-        // Services UI logic
-        function renderServicesList() {
-            const list = document.getElementById('services-list');
-            list.innerHTML = '';
-            currentServices.forEach((service, idx) => {
-                const li = document.createElement('li');
-                li.className = 'services-list-row';
-                li.innerHTML = `
-                    <input type="text" value="${service.name || ""}" data-idx="${idx}" data-type="name"
-                        class="service-name-input"
-                        placeholder="Service name">
-                    <input type="number" value="${service.price !== undefined ? service.price : ""}" data-idx="${idx}" data-type="price"
-                        class="service-price-input"
-                        placeholder="Price">
-                    <button class="remove-service-btn" data-idx="${idx}" title="Remove">×</button>
-                `;
-                list.appendChild(li);
-            });
-            list.querySelectorAll('.remove-service-btn').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    const idx = Number(btn.dataset.idx);
-                    currentServices.splice(idx, 1);
-                    renderServicesList();
-                });
-            });
-            list.querySelectorAll('input[type="text"],input[type="number"]').forEach(input => {
-                input.addEventListener('input', (e) => {
-                    const idx = Number(input.dataset.idx);
-                    const type = input.dataset.type;
-                    if (type === "name") {
-                        currentServices[idx].name = input.value;
-                    } else if (type === "price") {
-                        currentServices[idx].price = input.value;
-                    }
-                });
-            });
-        }
-
-        document.getElementById('load-company-btn').addEventListener('click', async () => {
-            selectedCompanyId = document.getElementById('company-select').value;
-            if (!selectedCompanyId) return;
-            await renderCompany(selectedCompanyId);
-        });
-
-        document.getElementById('add-service-form').addEventListener('submit', (e) => {
-            e.preventDefault();
-            const nameInput = document.getElementById('new-service-input');
-            const priceInput = document.getElementById('new-service-price-input');
-            const name = nameInput.value.trim();
-            const price = priceInput.value.trim();
-            if (name) {
-                currentServices.push({ name, price });
-                nameInput.value = '';
-                priceInput.value = '';
-                renderServicesList();
-            }
-        });
-
-        document.getElementById('new-service-input').addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                document.getElementById('add-service-btn').click();
-            }
-        });
-        document.getElementById('new-service-price-input').addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                document.getElementById('add-service-btn').click();
-            }
-        });
-
-        document.getElementById('save-services-btn').addEventListener('click', async () => {
-            if (!selectedCompanyId) return;
-            const filtered = currentServices.filter(s => s.name && s.name.trim() !== "");
-            try {
-                await updateDoc(doc(db, 'companies', selectedCompanyId), { services: filtered });
-                originalServices = filtered.map(s => ({ ...s }));
-                currentServices = filtered.map(s => ({ ...s }));
-                showToast('Services updated!');
-                renderServicesList();
-            } catch (err) {
-                showToast('Error updating services');
-            }
-        });
-
-        document.getElementById('edit-company-form').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            if (!selectedCompanyId) return;
-            const name = document.getElementById('company-name').value.trim();
-            const owner = document.getElementById('company-owner').value.trim();
-            const ownerPhone = document.getElementById('company-ownerPhone').value.trim();
-            const ownerEmail = document.getElementById('company-ownerEmail').value.trim();
-
-            try {
-                await updateDoc(doc(db, 'companies', selectedCompanyId), {
-                    name,
-                    owner,
-                    ownerPhone,
-                    ownerEmail
-                });
-                showToast('Company updated!');
-                document.getElementById('company-title').textContent = name;
-            } catch (err) {
-                showToast('Error updating company');
-            }
-        });
-
-        document.querySelector('.company-actions .cancel').addEventListener('click', () => {
-            if (selectedCompanyId) renderCompany(selectedCompanyId);
-        });
-
-        // Universal Auth button logic (unified)
         const authBtn = document.getElementById('auth-btn');
         const userModal = document.getElementById('user-modal');
         const userModalEmail = document.getElementById('user-modal-email');
         const logoutBtn = document.getElementById('logout-btn');
         let userEmail = "";
+        let companyDocId = null;
 
         function showUserModal() {
             userModal.style.display = 'block';
@@ -498,15 +382,18 @@
 
         onAuthStateChanged(auth, async user => {
             if (user) {
-                let displayName = user.displayName;
+                let role = 'admin';
+                let ownerName = user.displayName || user.email;
                 try {
                     const userDoc = await getDoc(doc(db, "users", user.uid));
-                    if (userDoc.exists() && userDoc.data().name) {
-                        displayName = userDoc.data().name;
+                    if (userDoc.exists()) {
+                        const data = userDoc.data();
+                        if (data.role) role = data.role;
+                        if (data.name) ownerName = data.name;
                     }
                 } catch { }
                 userEmail = user.email;
-                authBtn.textContent = displayName || user.email;
+                authBtn.textContent = ownerName;
                 authBtn.title = "Account";
                 authBtn.style.background = "#1976d2";
                 authBtn.style.color = "#fff";
@@ -522,20 +409,132 @@
                     await signOut(auth);
                     hideUserModal();
                 };
-            } else {
-                userEmail = "";
-                authBtn.textContent = "Sign In";
-                authBtn.title = "Sign in";
-                authBtn.onclick = () => {
-                    window.location.href = `login.html?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`;
+
+                if (role !== "owner") {
+                    window.location.href = "index.html";
+                    return;
+                }
+
+                // Query for the owner's company
+                let companyQuery = query(
+                    collection(db, "companies"),
+                    where("owner", "==", ownerName)
+                );
+                let querySnapshot = await getDocs(companyQuery);
+
+                // If not found, try matching by email
+                if (querySnapshot.empty) {
+                    companyQuery = query(
+                        collection(db, "companies"),
+                        where("owner", "==", user.email)
+                    );
+                    querySnapshot = await getDocs(companyQuery);
+                }
+
+                // If still not found, try "ownerName" field
+                if (querySnapshot.empty) {
+                    companyQuery = query(
+                        collection(db, "companies"),
+                        where("ownerName", "==", ownerName)
+                    );
+                    querySnapshot = await getDocs(companyQuery);
+                }
+
+                if (querySnapshot.empty) {
+                    document.getElementById('company-info').innerHTML = "<p>No company found for your account.</p>";
+                    document.getElementById('services-section').style.display = "none";
+                    return;
+                }
+
+                const docSnap = querySnapshot.docs[0];
+                companyDocId = docSnap.id;
+                const company = docSnap.data();
+
+                // Show company info
+                document.getElementById('company-info').innerHTML = `
+                    <h2>${company.name}</h2>
+                    <div><strong>Owner:</strong> ${company.owner || company.ownerName || ownerName}</div>
+                `;
+
+                // Load services
+                let services = Array.isArray(company.services) ? company.services : [];
+                renderServices(services);
+
+                // Add service
+                document.getElementById('add-service-form').onsubmit = async (e) => {
+                    e.preventDefault();
+                    const serviceName = document.getElementById('service-name').value.trim();
+                    const servicePrice = document.getElementById('service-price').value.trim();
+                    if (!serviceName || !servicePrice) return;
+                    const newService = { name: serviceName, price: servicePrice };
+                    await updateDoc(doc(db, "companies", companyDocId), {
+                        services: arrayUnion(newService)
+                    });
+                    services.push(newService);
+                    renderServices(services);
+                    document.getElementById('service-name').value = '';
+                    document.getElementById('service-price').value = '';
                 };
-                authBtn.style.background = "#1976d2";
-                authBtn.style.color = "#fff";
-                hideUserModal();
+
+                // Save all services
+                document.getElementById('services-list-form').onsubmit = async (e) => {
+                    e.preventDefault();
+                    // Collect all service rows
+                    const rows = document.querySelectorAll('.services-list-row');
+                    const updatedServices = [];
+                    rows.forEach(row => {
+                        const name = row.querySelector('.service-name-input').value.trim();
+                        const price = row.querySelector('.service-price-input').value.trim();
+                        if (name && price) {
+                            updatedServices.push({ name, price });
+                        }
+                    });
+                    await updateDoc(doc(db, "companies", companyDocId), {
+                        services: updatedServices
+                    });
+                    services = updatedServices;
+                    renderServices(services);
+                    showToast('Services updated!');
+                };
+            } else {
+                window.location.href = "login.html?redirect=owner-dashboard.html";
             }
         });
 
-        loadCompanies();
+        function renderServices(services) {
+            const list = document.getElementById('services-list');
+            list.innerHTML = '';
+            if (!services.length) {
+                list.innerHTML = '<div style="color:#888; font-size:1em;">No services added yet.</div>';
+                return;
+            }
+            services.forEach((service, idx) => {
+                const row = document.createElement('div');
+                row.className = 'services-list-row';
+                row.innerHTML = `
+                <input type="text" class="service-name-input" value="${service.name || ''}" />
+                <input type="number" class="service-price-input" value="${service.price || ''}" />
+                <button type="button" class="remove-service-btn" title="Delete Service">&#10005;</button>
+            `;
+                row.querySelector('.remove-service-btn').onclick = async () => {
+                    await updateDoc(doc(db, "companies", companyDocId), {
+                        services: arrayRemove(service)
+                    });
+                    services.splice(idx, 1);
+                    renderServices(services);
+                };
+                list.appendChild(row);
+            });
+        }
+
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.classList.add('show');
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 2000);
+        }
     </script>
 </body>
 
