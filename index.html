@@ -74,6 +74,16 @@
             `;
         }
 
+        // Helper to format phone numbers for display
+        function formatPhone(phone) {
+            // Remove all non-digit characters
+            const digits = (phone || '').replace(/\D/g, '');
+            if (digits.length === 10) {
+                return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6, 10)}`;
+            }
+            return phone || '';
+        }
+
         // Views
         async function renderLanding() {
             root.innerHTML = `
@@ -232,7 +242,8 @@
                     const email = document.getElementById('signup-email').value.trim();
                     const password = document.getElementById('signup-password').value;
                     const confirm = document.getElementById('signup-confirm').value;
-                    const phone = document.getElementById('signup-phone').value.trim();
+                    const phoneRaw = document.getElementById('signup-phone').value.trim();
+                    const phone = phoneRaw.replace(/\s+/g, ''); // strip whitespace
                     const errorBox = document.getElementById('signup-error');
                     errorBox.style.display = 'none';
                     if (password !== confirm) {
@@ -289,7 +300,8 @@
                     e.preventDefault();
                     const name = document.getElementById('signup-name').value.trim();
                     const email = document.getElementById('signup-email').value.trim();
-                    const phone = document.getElementById('signup-phone').value.trim();
+                    const phoneRaw = document.getElementById('signup-phone').value.trim();
+                    const phone = phoneRaw.replace(/\s+/g, ''); // strip whitespace
                     const password = document.getElementById('signup-password').value;
                     const confirm = document.getElementById('signup-confirm').value;
                     const errorBox = document.getElementById('signup-error');
@@ -362,7 +374,8 @@
                 const password = document.getElementById('signup-password').value;
                 const confirm = document.getElementById('signup-confirm').value;
                 const business = document.getElementById('signup-business').value.trim();
-                const phone = document.getElementById('signup-phone').value.trim();
+                const phoneRaw = document.getElementById('signup-phone').value.trim();
+                const phone = phoneRaw.replace(/\s+/g, ''); // strip whitespace
                 const role = document.getElementById('signup-role').value;
                 const errorBox = document.getElementById('signup-error');
                 errorBox.style.display = 'none';
@@ -567,27 +580,103 @@
         }
 
         async function renderCompanies() {
+            // Render the page structure first
             root.innerHTML = `
-        <div class="container">
-            ${renderSidebar()}
-            <main class="main">
-                <header class="topbar">
-                    <h1>Company Manager</h1>
-                    <div class="user-box" id="user-box">
-                        <button id="auth-btn">Sign Out</button>
-                    </div>
-                </header>
-                <section class="content" id="companies-content"></section>
-            </main>
-        </div>
+    <div class="container">
+        ${renderSidebar()}
+        <main class="main">
+            <header class="topbar">
+                <h1>Company Manager</h1>
+                <div class="user-box" id="user-box">
+                    <button id="auth-btn">Sign Out</button>
+                </div>
+            </header>
+            <section class="content" id="companies-content">
+                ${currentRole === 'admin'
+                    ? `<button id="add-company-btn" style="margin-bottom:22px;padding:10px 22px;border-radius:7px;background:#4f46e5;color:#fff;font-weight:600;border:none;cursor:pointer;">+ Add Company</button>`
+                    : ''
+                }
+                <div id="company-list"></div>
+            </section>
+        </main>
+    </div>
+    ${currentRole === 'admin'
+                    ? `<div id="add-company-modal" style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.18);z-index:1002;align-items:center;justify-content:center;">
+            <div style="background:#fff;padding:32px 28px;border-radius:14px;box-shadow:0 4px 24px rgba(0,0,0,0.09);max-width:370px;width:100%;margin:auto;">
+                <h2 style="margin-bottom:18px;font-size:1.2em;font-weight:700;text-align:center;">Add Company & Owner</h2>
+                <form id="add-company-form" style="display:flex;flex-direction:column;gap:14px;">
+                    <input type="text" id="ac-business" placeholder="Business Name" required style="padding:11px 13px;border-radius:7px;border:1px solid #e5e7eb;">
+                    <input type="text" id="ac-name" placeholder="Owner Name" required style="padding:11px 13px;border-radius:7px;border:1px solid #e5e7eb;">
+                    <input type="email" id="ac-email" placeholder="Owner Email" required style="padding:11px 13px;border-radius:7px;border:1px solid #e5e7eb;">
+                    <input type="tel" id="ac-phone" placeholder="Owner Phone" required style="padding:11px 13px;border-radius:7px;border:1px solid #e5e7eb;">
+                    <input type="password" id="ac-password" placeholder="Owner Password" required style="padding:11px 13px;border-radius:7px;border:1px solid #e5e7eb;">
+                    <input type="password" id="ac-confirm" placeholder="Confirm Password" required style="padding:11px 13px;border-radius:7px;border:1px solid #e5e7eb;">
+                    <div id="ac-error" style="color:#c62828;display:none;font-size:0.98em;"></div>
+                    <button type="submit" style="padding:12px 0;border-radius:7px;background:#4f46e5;color:#fff;font-size:1.08em;font-weight:600;border:none;cursor:pointer;">Create</button>
+                </form>
+                <button id="ac-modal-close" style="display:block;margin:0 auto;margin-top:10px;background:none;border:none;color:#888;font-size:1.1em;cursor:pointer;">Cancel</button>
+            </div>
+        </div>`
+                    : ''
+                }
     `;
+
             document.getElementById('auth-btn').onclick = () => signOut(auth);
+
+            // Add Company modal logic (admin only)
+            if (currentRole === 'admin') {
+                const modal = document.getElementById('add-company-modal');
+                document.getElementById('add-company-btn').onclick = () => {
+                    modal.style.display = 'flex';
+                };
+                document.getElementById('ac-modal-close').onclick = () => {
+                    modal.style.display = 'none';
+                    document.getElementById('ac-error').style.display = 'none';
+                };
+                document.getElementById('add-company-form').onsubmit = async (e) => {
+                    e.preventDefault();
+                    const business = document.getElementById('ac-business').value.trim();
+                    const name = document.getElementById('ac-name').value.trim();
+                    const email = document.getElementById('ac-email').value.trim();
+                    const phoneRaw = document.getElementById('ac-phone').value.trim();
+                    const phone = phoneRaw.replace(/\s+/g, ''); // strip whitespace
+                    const password = document.getElementById('ac-password').value;
+                    const confirm = document.getElementById('ac-confirm').value;
+                    const errorBox = document.getElementById('ac-error');
+                    errorBox.style.display = 'none';
+                    if (password !== confirm) {
+                        errorBox.textContent = "Passwords do not match.";
+                        errorBox.style.display = 'block';
+                        return;
+                    }
+                    try {
+                        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+                        const user = userCredential.user;
+                        const userData = { name, email, phone, role: 'owner', business, createdAt: new Date().toISOString() };
+                        await setDoc(doc(db, 'users', user.uid), userData);
+                        await setDoc(doc(db, 'companies', user.uid), {
+                            name: business,
+                            ownerUid: user.uid,
+                            ownerEmail: email,
+                            ownerName: name,
+                            ownerPhone: phone,
+                            createdAt: new Date().toISOString()
+                        });
+                        modal.style.display = 'none';
+                        route('/companies');
+                    } catch (err) {
+                        errorBox.textContent = err.message.replace('Firebase: ', '');
+                        errorBox.style.display = 'block';
+                    }
+                };
+            }
+
+            // Render company cards after DOM is ready
+            let html = '<div class="cards" style="gap:28px;">';
             if (currentRole === 'owner') {
-                // Only show owner's company
                 const companiesRef = collection(db, "companies");
                 const q = query(companiesRef, where('ownerUid', '==', currentUser.uid));
                 const querySnapshot = await getDocs(q);
-                let html = '<div class="cards" style="gap:28px;">';
                 querySnapshot.forEach(docSnap => {
                     const data = docSnap.data();
                     html += `
@@ -602,12 +691,10 @@
             `;
                 });
                 html += '</div>';
-                document.getElementById('companies-content').innerHTML = html || '<p>No company found for your account.</p>';
+                document.getElementById('company-list').innerHTML = querySnapshot.size ? html : '<p>No company found for your account.</p>';
             } else if (currentRole === 'admin') {
-                // Show all companies
                 const companiesRef = collection(db, "companies");
                 const querySnapshot = await getDocs(companiesRef);
-                let html = '<div class="cards" style="gap:28px;">';
                 querySnapshot.forEach(docSnap => {
                     const data = docSnap.data();
                     html += `
@@ -622,7 +709,7 @@
             `;
                 });
                 html += '</div>';
-                document.getElementById('companies-content').innerHTML = html || '<p>No companies found.</p>';
+                document.getElementById('company-list').innerHTML = querySnapshot.size ? html : '<p>No companies found.</p>';
             }
             addSpaLinkHandlers();
         }
@@ -684,7 +771,7 @@
             <td style="padding:12px 10px;border-radius:6px 0 0 6px;">${owner.business}</td>
             <td style="padding:12px 10px;">${owner.ownerName}</td>
             <td style="padding:12px 10px;">${owner.ownerEmail}</td>
-            <td style="padding:12px 10px;border-radius:0 6px 6px 0;">${owner.ownerPhone}</td>
+            <td style="padding:12px 10px;border-radius:0 6px 6px 0;">${formatPhone(owner.ownerPhone)}</td>
         </tr>
     `).join('');
 
@@ -805,7 +892,7 @@
                                         ${clients.map(client => `
                                             <div style="background:#f8fafc;padding:18px 16px;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.04);margin-bottom:0;">
                                                 <div style="font-weight:600;color:#4f46e5;margin-bottom:8px;">${client.name}</div>
-                                                <div style="margin-bottom:6px;"><span style="font-weight:500;">Phone:</span> ${client.phone}</div>
+                                                <div style="margin-bottom:6px;"><span style="font-weight:500;">Phone:</span> ${formatPhone(client.phone)}</div>
                                                 <div><span style="font-weight:500;">Email:</span> ${client.email}</div>
                                             </div>
                                         `).join('')}
@@ -869,61 +956,125 @@
                 return;
             }
             const data = companyDoc.data();
-            const services = Array.isArray(data.services) ? data.services : [];
+            let services = Array.isArray(data.services) ? data.services : [];
             root.innerHTML = `
-        <div class="container">
-            ${renderSidebar()}
-            <main class="main">
-                <header class="topbar">
-                    <h1>Company Details</h1>
-                    <div class="user-box" id="user-box">
-                        <button id="auth-btn">Sign Out</button>
-                    </div>
-                </header>
-                <section class="content">
-                    <div class="card" style="padding:32px 28px;margin-bottom:32px;">
-                        <h2 style="margin-bottom:24px;">${data.name || 'Unnamed Company'}</h2>
-                        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:18px;margin-bottom:28px;">
-                            <div style="background:#f8fafc;padding:18px 16px;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.04);">
-                                <span style="font-weight:600;color:#4f46e5;">Owner</span><br>
-                                <span>${data.ownerName || 'Unknown'}</span>
-                            </div>
-                            <div style="background:#f8fafc;padding:18px 16px;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.04);">
-                                <span style="font-weight:600;color:#4f46e5;">Phone</span><br>
-                                <span>${data.ownerPhone || 'N/A'}</span>
-                            </div>
-                            <div style="background:#f8fafc;padding:18px 16px;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.04);">
-                                <span style="font-weight:600;color:#4f46e5;">Email</span><br>
-                                <span>${data.ownerEmail || 'N/A'}</span>
-                            </div>
+    <div class="container">
+        ${renderSidebar()}
+        <main class="main">
+            <header class="topbar">
+                <h1>Company Details</h1>
+                <div class="user-box" id="user-box">
+                    <button id="auth-btn">Sign Out</button>
+                </div>
+            </header>
+            <section class="content">
+                <div class="card" style="padding:32px 28px;margin-bottom:32px;">
+                    <h2 style="margin-bottom:24px;">${data.name || 'Unnamed Company'}</h2>
+                    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:18px;margin-bottom:28px;">
+                        <div style="background:#f8fafc;padding:18px 16px;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.04);">
+                            <span style="font-weight:600;color:#4f46e5;">Owner</span><br>
+                            <span>${data.ownerName || 'Unknown'}</span>
                         </div>
-                        <button class="btn" id="see-clients-btn" style="margin-bottom:18px;">See Client List</button>
-                        <div class="section-space"></div>
-                        <h3 style="margin-bottom:16px;">Services & Prices</h3>
-                        <div style="margin-bottom:0;">
-                            ${services.length === 0 ? '<p style="color:#888;">No services listed.</p>' : `
-                                <table style="width:100%;margin-top:8px;border-collapse:separate;border-spacing:0 10px;">
-                                    <thead>
-                                        <tr>
-                                            <th style="text-align:left;padding:10px 8px;color:#4f46e5;font-size:1.08em;">Service</th>
-                                            <th style="text-align:left;padding:10px 8px;color:#4f46e5;font-size:1.08em;">Price</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        ${services.map(s => `
-                                            <tr style="background:#f8fafc;">
-                                                <td style="padding:10px 8px;border-radius:6px 0 0 6px;">${s.name}</td>
-                                                <td style="padding:10px 8px;border-radius:0 6px 6px 0;">$${s.price}</td>
-                                            </tr>
-                                        `).join('')}
-                                    </tbody>
-                                </table>
-                            `}
+                        <div style="background:#f8fafc;padding:18px 16px;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.04);">
+                            <span style="font-weight:600;color:#4f46e5;">Phone</span><br>
+                            <span>${formatPhone(data.ownerPhone) || 'N/A'}</span>
+                        </div>
+                        <div style="background:#f8fafc;padding:18px 16px;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.04);">
+                            <span style="font-weight:600;color:#4f46e5;">Email</span><br>
+                            <span>${data.ownerEmail || 'N/A'}</span>
                         </div>
                     </div>
-                </section>
-            </main>
-        </div>
+                    <button class="btn" id="see-clients-btn" style="margin-bottom:18px;">See Client List</button>
+                    <div class="section-space"></div>
+                    <h3 style="margin-bottom:16px;">Services & Prices</h3>
+                    <div style="margin-bottom:0;">
+                        <form id="services-form">
+                        <table style="width:100%;margin-top:8px;border-collapse:separate;border-spacing:0 10px;">
+                            <thead>
+                                <tr>
+                                    <th style="text-align:left;padding:10px 8px;color:#4f46e5;font-size:1.08em;">Service</th>
+                                    <th style="text-align:left;padding:10px 8px;color:#4f46e5;font-size:1.08em;">Price</th>
+                                    ${currentRole === 'admin' ? `<th></th>` : ''}
+                                </tr>
+                            </thead>
+                            <tbody id="services-table-body">
+                                ${services.length === 0 ? '<tr><td colspan="3" style="color:#888;">No services listed.</td></tr>' : services.map((s, idx) => `
+                                    <tr style="background:#f8fafc;">
+                                        <td style="padding:10px 8px;border-radius:6px 0 0 6px;">${s.name}</td>
+                                        <td style="padding:10px 8px;border-radius:0 6px 6px 0;">$${s.price}</td>
+                                        ${currentRole === 'admin' ? `<td style="text-align:center;">
+                <button type="button" class="remove-service-btn" data-idx="${idx}"
+                    style="
+                        background:#fff;
+                        border:none;
+                        border-radius:12px;
+                        width:32px;
+                        height:32px;
+                        box-shadow:0 1px 4px rgba(0,0,0,0.07);
+                        display:flex;
+                        align-items:center;
+                        justify-content:center;
+                        cursor:pointer;
+                        transition:background 0.18s;
+                        padding:0;
+                    "
+                    onmouseover="this.style.background='#ffeaea'"
+                    onmouseout="this.style.background='#fff'"
+                    aria-label="Remove service"
+                >
+                    <svg width="18" height="18" viewBox="0 0 18 18" fill="none" style="display:block;" xmlns="http://www.w3.org/2000/svg">
+                        <rect x="4.2" y="3.8" width="9.6" height="9.6" rx="4.8" fill="#fff"/>
+                        <path d="M6 6L12 12M12 6L6 12" stroke="#e53935" stroke-width="2.2" stroke-linecap="round"/>
+                    </svg>
+                </button>
+            </td>` : ''}
+                                    </tr>
+                                `).join('')}
+                                ${currentRole === 'admin' ? `
+                                    <tr style="background:#f8fafc;">
+                                        <td style="padding:10px 8px;">
+                                            <input type="text" id="new-service-name" placeholder="Service name" style="width:90%;padding:8px 12px;border-radius:10px;border:1px solid #e5e7eb;font-size:1em;">
+                                        </td>
+                                        <td style="padding:10px 8px;">
+                                            <input type="number" id="new-service-price" placeholder="Price" style="width:70%;padding:8px 12px;border-radius:10px;border:1px solid #e5e7eb;font-size:1em;">
+                                        </td>
+                                        <td style="text-align:center;">
+                                            <button type="button" id="add-service-btn"
+                                                style="
+                                                    background:#fff;
+                                                    border:none;
+                                                    border-radius:12px;
+                                                    width:32px;
+                                                    height:32px;
+                                                    box-shadow:0 1px 4px rgba(0,0,0,0.07);
+                                                    display:flex;
+                                                    align-items:center;
+                                                    justify-content:center;
+                                                    cursor:pointer;
+                                                    transition:background 0.18s;
+                                                    padding:0;
+                                                "
+                                                onmouseover="this.style.background='#e6faed'"
+                                                onmouseout="this.style.background='#fff'"
+                                                aria-label="Add service"
+                                            >
+                                                <svg width="18" height="18" viewBox="0 0 18 18" fill="none" style="display:block;" xmlns="http://www.w3.org/2000/svg">
+                                                    <rect x="4.2" y="3.8" width="9.6" height="9.6" rx="4.8" fill="#fff"/>
+                                                    <path d="M9 6V12M6 9H12" stroke="#22c55e" stroke-width="2.2" stroke-linecap="round"/>
+                                                </svg>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ` : ''}
+                            </tbody>
+                        </table>
+                        <div id="services-error" style="color:#c62828;display:none;font-size:0.98em;margin-top:8px;"></div>
+                        </form>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
     `;
             document.getElementById('auth-btn').onclick = () => signOut(auth);
             document.getElementById('see-clients-btn').onclick = (e) => {
@@ -931,6 +1082,46 @@
                 route(`/clients?company=${companyId}`);
             };
             addSpaLinkHandlers();
+
+            // Admin-only service editing logic
+            if (currentRole === 'admin') {
+                // Remove service
+                document.querySelectorAll('.remove-service-btn').forEach(btn => {
+                    btn.onclick = async () => {
+                        const idx = parseInt(btn.getAttribute('data-idx'));
+                        const updated = services.slice();
+                        updated.splice(idx, 1);
+                        try {
+                            await updateDoc(doc(db, "companies", companyId), { services: updated });
+                            renderCompanyDetail(companyId);
+                        } catch (err) {
+                            const errBox = document.getElementById('services-error');
+                            errBox.textContent = err.message.replace('Firebase: ', '');
+                            errBox.style.display = 'block';
+                        }
+                    };
+                });
+                // Add service
+                document.getElementById('add-service-btn').onclick = async () => {
+                    const name = document.getElementById('new-service-name').value.trim();
+                    const price = document.getElementById('new-service-price').value.trim();
+                    const errBox = document.getElementById('services-error');
+                    errBox.style.display = 'none';
+                    if (!name || !price || isNaN(price)) {
+                        errBox.textContent = "Please enter a valid service name and price.";
+                        errBox.style.display = 'block';
+                        return;
+                    }
+                    const updated = services.concat([{ name, price: Number(price) }]);
+                    try {
+                        await updateDoc(doc(db, "companies", companyId), { services: updated });
+                        renderCompanyDetail(companyId);
+                    } catch (err) {
+                        errBox.textContent = err.message.replace('Firebase: ', '');
+                        errBox.style.display = 'block';
+                    }
+                };
+            }
         }
 
         // Main view renderer
