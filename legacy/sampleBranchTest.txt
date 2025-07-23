@@ -1,3 +1,0 @@
-This is where branch testing will happen. 
-
--- Add something underneath in a cloned branch and push it for review.
