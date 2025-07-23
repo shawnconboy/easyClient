@@ -441,41 +441,220 @@
 
         async function renderDashboard() {
             if (currentRole === 'owner') {
-                // Owner dashboard
-                root.innerHTML = `
-                    <div class="container">
-                        ${renderSidebar()}
-                        <main class="main">
-                            <header class="topbar">
-                                <h1>Dashboard</h1>
-                                <div class="user-box" id="user-box">
-                                    <button id="auth-btn">Sign Out</button>
-                                </div>
-                            </header>
-                            <section class="content" id="dashboard-content"></section>
-                        </main>
-                    </div>
-                `;
-                document.getElementById('auth-btn').onclick = () => signOut(auth);
-                // Only show owner's company
+                // Fetch owner's company
                 const companiesRef = collection(db, "companies");
                 const q = query(companiesRef, where('ownerUid', '==', currentUser.uid));
                 const querySnapshot = await getDocs(q);
-                let html = '';
-                querySnapshot.forEach(docSnap => {
+                let companyDoc = null;
+                let companyId = null;
+                if (!querySnapshot.empty) {
+                    companyDoc = querySnapshot.docs[0].data();
+                    companyId = querySnapshot.docs[0].id;
+                }
+
+                // Fetch services
+                let services = Array.isArray(companyDoc?.services) ? companyDoc.services : [];
+
+                // Fetch clients for this company
+                const clientsSnap = await getDocs(query(collection(db, "users"), where("role", "==", "client")));
+                let clients = [];
+                clientsSnap.forEach(docSnap => {
                     const data = docSnap.data();
-                    html += `
-                        <div class="card">
-                            <h3>${data.name || 'Unnamed Company'}</h3>
-                            <div class="cardOwner">
-                                <p>Owner</p>
-                                <p>${data.ownerName || 'Unknown'}</p>
-                            </div>
-                            <button class="view-company-btn" data-id="${docSnap.id}">View</button>
-                        </div>
-                    `;
+                    if (data.companyId === companyId) {
+                        clients.push(data);
+                    }
                 });
-                document.getElementById('dashboard-content').innerHTML = html || '<p>No company found for your account.</p>';
+
+                root.innerHTML = `
+<div class="container">
+    ${renderSidebar()}
+    <main class="main">
+        <header class="topbar">
+            <h1>Dashboard</h1>
+            <div class="user-box" id="user-box">
+                <button id="auth-btn">Sign Out</button>
+            </div>
+        </header>
+        <section class="content" id="dashboard-content">
+            <!-- Company Info -->
+            <div class="card" style="padding:28px 24px;margin-bottom:28px;">
+                <h2 style="margin-bottom:10px;">${companyDoc?.name || 'Unnamed Company'}</h2>
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:18px;">
+                    <div>
+                        <span style="font-weight:600;color:#4f46e5;">Owner:</span> ${companyDoc?.ownerName || 'Unknown'}
+                    </div>
+                    <div>
+                        <span style="font-weight:600;color:#4f46e5;">Phone:</span> ${formatPhone(companyDoc?.ownerPhone) || 'N/A'}
+                    </div>
+                    <div>
+                        <span style="font-weight:600;color:#4f46e5;">Email:</span> ${companyDoc?.ownerEmail || 'N/A'}
+                    </div>
+                </div>
+            </div>
+            <!-- Services Section -->
+            <div class="card" style="padding:28px 24px;margin-bottom:28px;">
+                <h2 style="margin-bottom:16px;">Services & Prices</h2>
+                <form id="services-form">
+                    <table style="width:100%;margin-top:8px;border-collapse:separate;border-spacing:0 10px;">
+                        <thead>
+                            <tr>
+                                <th style="text-align:left;padding:10px 8px;color:#4f46e5;font-size:1.08em;">Service</th>
+                                <th style="text-align:left;padding:10px 8px;color:#4f46e5;font-size:1.08em;">Price</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody id="services-table-body">
+                            ${services.length === 0 ? '<tr><td colspan="3" style="color:#888;">No services listed.</td></tr>' : services.map((s, idx) => `
+                                <tr style="background:#f8fafc;">
+                                    <td style="padding:10px 8px;border-radius:6px 0 0 6px;">${s.name}</td>
+                                    <td style="padding:10px 8px;border-radius:0 6px 6px 0;">$${s.price}</td>
+                                    <td style="text-align:center;">
+                                        <button type="button" class="remove-service-btn" data-idx="${idx}"
+                                            style="
+                                                background:#fff;
+                                                border:none;
+                                                border-radius:12px;
+                                                width:32px;
+                                                height:32px;
+                                                box-shadow:0 1px 4px rgba(0,0,0,0.07);
+                                                display:flex;
+                                                align-items:center;
+                                                justify-content:center;
+                                                cursor:pointer;
+                                                transition:background 0.18s;
+                                                padding:0;
+                                            "
+                                            onmouseover="this.style.background='#ffeaea'"
+                                            onmouseout="this.style.background='#fff'"
+                                            aria-label="Remove service"
+                                        >
+                                            <svg width="18" height="18" viewBox="0 0 18 18" fill="none" style="display:block;" xmlns="http://www.w3.org/2000/svg">
+                                                <rect x="4.2" y="3.8" width="9.6" height="9.6" rx="4.8" fill="#fff"/>
+                                                <path d="M6 6L12 12M12 6L6 12" stroke="#e53935" stroke-width="2.2" stroke-linecap="round"/>
+                                            </svg>
+                                        </button>
+                                    </td>
+                                </tr>
+                            `).join('')}
+                            <tr style="background:#f8fafc;">
+                                <td style="padding:10px 8px;">
+                                    <input type="text" id="new-service-name" placeholder="Service name" style="width:90%;padding:8px 12px;border-radius:10px;border:1px solid #e5e7eb;font-size:1em;">
+                                </td>
+                                <td style="padding:10px 8px;">
+                                    <input type="number" id="new-service-price" placeholder="Price" style="width:70%;padding:8px 12px;border-radius:10px;border:1px solid #e5e7eb;font-size:1em;">
+                                </td>
+                                <td style="text-align:center;">
+                                    <button type="button" id="add-service-btn"
+                                        style="
+                                            background:#fff;
+                                            border:none;
+                                            border-radius:12px;
+                                            width:32px;
+                                            height:32px;
+                                            box-shadow:0 1px 4px rgba(0,0,0,0.07);
+                                            display:flex;
+                                            align-items:center;
+                                            justify-content:center;
+                                            cursor:pointer;
+                                            transition:background 0.18s;
+                                            padding:0;
+                                        "
+                                        onmouseover="this.style.background='#e6faed'"
+                                        onmouseout="this.style.background='#fff'"
+                                        aria-label="Add service"
+                                    >
+                                        <svg width="18" height="18" viewBox="0 0 18 18" fill="none" style="display:block;" xmlns="http://www.w3.org/2000/svg">
+                                            <rect x="4.2" y="3.8" width="9.6" height="9.6" rx="4.8" fill="#fff"/>
+                                            <path d="M9 6V12M6 9H12" stroke="#22c55e" stroke-width="2.2" stroke-linecap="round"/>
+                                        </svg>
+                                    </button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <div id="services-error" style="color:#c62828;display:none;font-size:0.98em;margin-top:8px;"></div>
+                </form>
+            </div>
+            <!-- Clients Section -->
+            <div class="card" style="padding:28px 24px;margin-bottom:28px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <h2 style="margin-bottom:0;">Clients</h2>
+                    <button id="add-client-btn" style="padding:8px 18px;border-radius:7px;background:#4f46e5;color:#fff;font-weight:600;border:none;cursor:pointer;">+ Add Client</button>
+                </div>
+                <table style="width:100%;margin-top:18px;border-collapse:separate;border-spacing:0 10px;">
+                    <thead>
+                        <tr>
+                            <th style="text-align:left;padding:10px 8px;color:#4f46e5;">Name</th>
+                            <th style="text-align:left;padding:10px 8px;color:#4f46e5;">Email</th>
+                            <th style="text-align:left;padding:10px 8px;color:#4f46e5;">Phone</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${clients.length === 0 ? '<tr><td colspan="3" style="color:#888;">No clients yet.</td></tr>' : clients.map(client => `
+                            <tr style="background:#f8fafc;">
+                                <td style="padding:10px 8px;border-radius:6px 0 0 6px;">${client.name}</td>
+                                <td style="padding:10px 8px;">${client.email}</td>
+                                <td style="padding:10px 8px;border-radius:0 6px 6px 0;">${formatPhone(client.phone)}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+            <!-- Booking Section -->
+            <div class="card" style="padding:28px 24px;">
+                <h2 style="margin-bottom:16px;">Bookings</h2>
+                <div id="booking-calendar" style="min-height:320px;background:#f8fafc;border-radius:12px;display:flex;align-items:center;justify-content:center;color:#888;">
+                    Calendar coming soon...
+                </div>
+            </div>
+        </section>
+    </main>
+</div>
+`;
+
+                document.getElementById('auth-btn').onclick = () => signOut(auth);
+
+                // Service editing logic
+                document.querySelectorAll('.remove-service-btn').forEach(btn => {
+                    btn.onclick = async () => {
+                        const idx = parseInt(btn.getAttribute('data-idx'));
+                        const updated = services.slice();
+                        updated.splice(idx, 1);
+                        try {
+                            await updateDoc(doc(db, "companies", companyId), { services: updated });
+                            renderDashboard();
+                        } catch (err) {
+                            const errBox = document.getElementById('services-error');
+                            errBox.textContent = err.message.replace('Firebase: ', '');
+                            errBox.style.display = 'block';
+                        }
+                    };
+                });
+                document.getElementById('add-service-btn').onclick = async () => {
+                    const name = document.getElementById('new-service-name').value.trim();
+                    const price = document.getElementById('new-service-price').value.trim();
+                    const errBox = document.getElementById('services-error');
+                    errBox.style.display = 'none';
+                    if (!name || !price || isNaN(price)) {
+                        errBox.textContent = "Please enter a valid service name and price.";
+                        errBox.style.display = 'block';
+                        return;
+                    }
+                    const updated = services.concat([{ name, price: Number(price) }]);
+                    try {
+                        await updateDoc(doc(db, "companies", companyId), { services: updated });
+                        renderDashboard();
+                    } catch (err) {
+                        errBox.textContent = err.message.replace('Firebase: ', '');
+                        errBox.style.display = 'block';
+                    }
+                };
+
+                // Add client button (modal logic placeholder)
+                document.getElementById('add-client-btn').onclick = () => {
+                    alert('Add client modal coming soon...');
+                };
+
                 addSpaLinkHandlers();
                 return;
             }
@@ -955,135 +1134,134 @@
             const data = companyDoc.data();
             let services = Array.isArray(data.services) ? data.services : [];
             root.innerHTML = `
-    <div class="container">
-        ${renderSidebar()}
-        <main class="main">
-            <header class="topbar">
-                <h1>Company Details</h1>
-                <div class="user-box" id="user-box">
-                    <button id="auth-btn">Sign Out</button>
-                </div>
-            </header>
-            <section class="content">
-                <div class="card" style="padding:32px 28px;margin-bottom:32px;">
-                    <h2 style="margin-bottom:24px;">${data.name || 'Unnamed Company'}</h2>
-                    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:18px;margin-bottom:28px;">
-                        <div style="background:#f8fafc;padding:18px 16px;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.04);">
-                            <span style="font-weight:600;color:#4f46e5;">Owner</span><br>
-                            <span>${data.ownerName || 'Unknown'}</span>
-                        </div>
-                        <div style="background:#f8fafc;padding:18px 16px;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.04);">
-                            <span style="font-weight:600;color:#4f46e5;">Phone</span><br>
-                            <span>${formatPhone(data.ownerPhone) || 'N/A'}</span>
-                        </div>
-                        <div style="background:#f8fafc;padding:18px 16px;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.04);">
-                            <span style="font-weight:600;color:#4f46e5;">Email</span><br>
-                            <span>${data.ownerEmail || 'N/A'}</span>
-                        </div>
+<div class="container">
+    ${renderSidebar()}
+    <main class="main">
+        <header class="topbar">
+            <h1>Company Details</h1>
+            <div class="user-box" id="user-box">
+                <button id="auth-btn">Sign Out</button>
+            </div>
+        </header>
+        <section class="content">
+            <div class="card" style="padding:32px 28px;margin-bottom:32px;">
+                <h2 style="margin-bottom:24px;">${data.name || 'Unnamed Company'}</h2>
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:18px;margin-bottom:28px;">
+                    <div style="background:#f8fafc;padding:18px 16px;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.04);">
+                        <span style="font-weight:600;color:#4f46e5;">Owner</span><br>
+                        <span>${data.ownerName || 'Unknown'}</span>
                     </div>
-                    <button class="btn" id="see-clients-btn" style="margin-bottom:18px;">See Client List</button>
-                    <div class="section-space"></div>
-                    <h3 style="margin-bottom:16px;">Services & Prices</h3>
-                    <div style="margin-bottom:0;">
-                        <form id="services-form">
-                        <table style="width:100%;margin-top:8px;border-collapse:separate;border-spacing:0 10px;">
-                            <thead>
-                                <tr>
-                                    <th style="text-align:left;padding:10px 8px;color:#4f46e5;font-size:1.08em;">Service</th>
-                                    <th style="text-align:left;padding:10px 8px;color:#4f46e5;font-size:1.08em;">Price</th>
-                                    ${currentRole === 'admin' ? `<th></th>` : ''}
+                    <div style="background:#f8fafc;padding:18px 16px;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.04);">
+                        <span style="font-weight:600;color:#4f46e5;">Phone</span><br>
+                        <span>${formatPhone(data.ownerPhone) || 'N/A'}</span>
+                    </div>
+                    <div style="background:#f8fafc;padding:18px 16px;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.04);">
+                        <span style="font-weight:600;color:#4f46e5;">Email</span><br>
+                        <span>${data.ownerEmail || 'N/A'}</span>
+                    </div>
+                </div>
+                <button class="btn" id="see-clients-btn" style="margin-bottom:18px;">See Client List</button>
+                <div class="section-space"></div>
+                <h3 style="margin-bottom:16px;">Services & Prices</h3>
+                <div style="margin-bottom:0;">
+                    <form id="services-form">
+                    <table style="width:100%;margin-top:8px;border-collapse:separate;border-spacing:0 10px;">
+                        <thead>
+                            <tr>
+                                <th style="text-align:left;padding:10px 8px;color:#4f46e5;font-size:1.08em;">Service</th>
+                                <th style="text-align:left;padding:10px 8px;color:#4f46e5;font-size:1.08em;">Price</th>
+                                ${(currentRole === 'admin' || currentRole === 'owner') ? `<th></th>` : ''}
+                            </tr>
+                        </thead>
+                        <tbody id="services-table-body">
+                            ${services.length === 0 ? '<tr><td colspan="3" style="color:#888;">No services listed.</td></tr>' : services.map((s, idx) => `
+                                <tr style="background:#f8fafc;">
+                                    <td style="padding:10px 8px;border-radius:6px 0 0 6px;">${s.name}</td>
+                                    <td style="padding:10px 8px;border-radius:0 6px 6px 0;">$${s.price}</td>
+                                    ${(currentRole === 'admin' || currentRole === 'owner') ? `<td style="text-align:center;">
+        <button type="button" class="remove-service-btn" data-idx="${idx}"
+            style="
+                background:#fff;
+                border:none;
+                border-radius:12px;
+                width:32px;
+                height:32px;
+                box-shadow:0 1px 4px rgba(0,0,0,0.07);
+                display:flex;
+                align-items:center;
+                justify-content:center;
+                cursor:pointer;
+                transition:background 0.18s;
+                padding:0;
+            "
+            onmouseover="this.style.background='#ffeaea'"
+            onmouseout="this.style.background='#fff'"
+            aria-label="Remove service"
+        >
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none" style="display:block;" xmlns="http://www.w3.org/2000/svg">
+                <rect x="4.2" y="3.8" width="9.6" height="9.6" rx="4.8" fill="#fff"/>
+                <path d="M6 6L12 12M12 6L6 12" stroke="#e53935" stroke-width="2.2" stroke-linecap="round"/>
+            </svg>
+        </button>
+    </td>` : ''}
                                 </tr>
-                            </thead>
-                            <tbody id="services-table-body">
-                                ${services.length === 0 ? '<tr><td colspan="3" style="color:#888;">No services listed.</td></tr>' : services.map((s, idx) => `
-                                    <tr style="background:#f8fafc;">
-                                        <td style="padding:10px 8px;border-radius:6px 0 0 6px;">${s.name}</td>
-                                        <td style="padding:10px 8px;border-radius:0 6px 6px 0;">$${s.price}</td>
-                                        ${currentRole === 'admin' ? `<td style="text-align:center;">
-                <button type="button" class="remove-service-btn" data-idx="${idx}"
-                    style="
-                        background:#fff;
-                        border:none;
-                        border-radius:12px;
-                        width:32px;
-                        height:32px;
-                        box-shadow:0 1px 4px rgba(0,0,0,0.07);
-                        display:flex;
-                        align-items:center;
-                        justify-content:center;
-                        cursor:pointer;
-                        transition:background 0.18s;
-                        padding:0;
-                    "
-                    onmouseover="this.style.background='#ffeaea'"
-                    onmouseout="this.style.background='#fff'"
-                    aria-label="Remove service"
-                >
-                    <svg width="18" height="18" viewBox="0 0 18 18" fill="none" style="display:block;" xmlns="http://www.w3.org/2000/svg">
-                        <rect x="4.2" y="3.8" width="9.6" height="9.6" rx="4.8" fill="#fff"/>
-                        <path d="M6 6L12 12M12 6L6 12" stroke="#e53935" stroke-width="2.2" stroke-linecap="round"/>
-                    </svg>
-                </button>
-            </td>` : ''}
-                                    </tr>
-                                `).join('')}
-                                ${currentRole === 'admin' ? `
-                                    <tr style="background:#f8fafc;">
-                                        <td style="padding:10px 8px;">
-                                            <input type="text" id="new-service-name" placeholder="Service name" style="width:90%;padding:8px 12px;border-radius:10px;border:1px solid #e5e7eb;font-size:1em;">
-                                        </td>
-                                        <td style="padding:10px 8px;">
-                                            <input type="number" id="new-service-price" placeholder="Price" style="width:70%;padding:8px 12px;border-radius:10px;border:1px solid #e5e7eb;font-size:1em;">
-                                        </td>
-                                        <td style="text-align:center;">
-                                            <button type="button" id="add-service-btn"
-                                                style="
-                                                    background:#fff;
-                                                    border:none;
-                                                    border-radius:12px;
-                                                    width:32px;
-                                                    height:32px;
-                                                    box-shadow:0 1px 4px rgba(0,0,0,0.07);
-                                                    display:flex;
-                                                    align-items:center;
-                                                    justify-content:center;
-                                                    cursor:pointer;
-                                                    transition:background 0.18s;
-                                                    padding:0;
-                                                "
-                                                onmouseover="this.style.background='#e6faed'"
-                                                onmouseout="this.style.background='#fff'"
-                                                aria-label="Add service"
-                                            >
-                                                <svg width="18" height="18" viewBox="0 0 18 18" fill="none" style="display:block;" xmlns="http://www.w3.org/2000/svg">
-                                                    <rect x="4.2" y="3.8" width="9.6" height="9.6" rx="4.8" fill="#fff"/>
-                                                    <path d="M9 6V12M6 9H12" stroke="#22c55e" stroke-width="2.2" stroke-linecap="round"/>
-                                                </svg>
-                                            </button>
-                                        </td>
-                                    </tr>
-                                ` : ''}
-                            </tbody>
-                        </table>
-                        <div id="services-error" style="color:#c62828;display:none;font-size:0.98em;margin-top:8px;"></div>
-                        </form>
-                    </div>
+                            `).join('')}
+                            ${(currentRole === 'admin' || currentRole === 'owner') ? `
+                                <tr style="background:#f8fafc;">
+                                    <td style="padding:10px 8px;">
+                                        <input type="text" id="new-service-name" placeholder="Service name" style="width:90%;padding:8px 12px;border-radius:10px;border:1px solid #e5e7eb;font-size:1em;">
+                                    </td>
+                                    <td style="padding:10px 8px;">
+                                        <input type="number" id="new-service-price" placeholder="Price" style="width:70%;padding:8px 12px;border-radius:10px;border:1px solid #e5e7eb;font-size:1em;">
+                                    </td>
+                                    <td style="text-align:center;">
+                                        <button type="button" id="add-service-btn"
+                                            style="
+                                                background:#fff;
+                                                border:none;
+                                                border-radius:12px;
+                                                width:32px;
+                                                height:32px;
+                                                box-shadow:0 1px 4px rgba(0,0,0,0.07);
+                                                display:flex;
+                                                align-items:center;
+                                                justify-content:center;
+                                                cursor:pointer;
+                                                transition:background 0.18s;
+                                                padding:0;
+                                            "
+                                            onmouseover="this.style.background='#e6faed'"
+                                            onmouseout="this.style.background='#fff'"
+                                            aria-label="Add service"
+                                        >
+                                            <svg width="18" height="18" viewBox="0 0 18 18" fill="none" style="display:block;" xmlns="http://www.w3.org/2000/svg">
+                                                <rect x="4.2" y="3.8" width="9.6" height="9.6" rx="4.8" fill="#fff"/>
+                                                <path d="M9 6V12M6 9H12" stroke="#22c55e" stroke-width="2.2" stroke-linecap="round"/>
+                                            </svg>
+                                        </button>
+                                    </td>
+                                </tr>
+                            ` : ''}
+                        </tbody>
+                    </table>
+                    <div id="services-error" style="color:#c62828;display:none;font-size:0.98em;margin-top:8px;"></div>
+                    </form>
                 </div>
-            </section>
-        </main>
-    </div>
-    `;
+            </div>
+        </section>
+    </main>
+</div>
+`;
             document.getElementById('auth-btn').onclick = () => signOut(auth);
             document.getElementById('see-clients-btn').onclick = (e) => {
                 e.preventDefault();
-                // Update the URL and render the client list for this company
                 window.history.pushState({}, '', `/clients?company=${companyId}`);
                 renderClients(`/clients?company=${companyId}`);
             };
             addSpaLinkHandlers();
 
-            // Admin-only service editing logic
-            if (currentRole === 'admin') {
+            // Service editing logic for admin and owner
+            if (currentRole === 'admin' || currentRole === 'owner') {
                 // Remove service
                 document.querySelectorAll('.remove-service-btn').forEach(btn => {
                     btn.onclick = async () => {
@@ -1169,7 +1347,24 @@
             document.querySelectorAll('.spa-link').forEach(link => {
                 link.onclick = (e) => {
                     e.preventDefault();
-                    route(link.getAttribute('href'));
+                    const href = link.getAttribute('href');
+                    // Owner: "Clients" tab should route to their company client list
+                    if (currentRole === 'owner' && href === '/clients') {
+                        // Find owner's company ID
+                        (async () => {
+                            const companiesRef = collection(db, "companies");
+                            const q = query(companiesRef, where('ownerUid', '==', currentUser.uid));
+                            const querySnapshot = await getDocs(q);
+                            if (!querySnapshot.empty) {
+                                const companyId = querySnapshot.docs[0].id;
+                                route(`/clients?company=${companyId}`);
+                            } else {
+                                route('/clients'); // fallback, will show error
+                            }
+                        })();
+                    } else {
+                        route(href);
+                    }
                 };
             });
             // Add handler for company card "View" buttons
