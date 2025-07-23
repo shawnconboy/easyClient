@@ -202,9 +202,8 @@
     </div>
 
     <script type="module">
-        // Import the functions you need from the SDKs you need
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
-        import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, getDoc } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, getDoc, query, where } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
         import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
 
         // Your web app's Firebase configuration
@@ -233,7 +232,7 @@
             }, 2000);
         }
 
-        // Add Company (Admin)
+        // Add Company (Admin only)
         document.getElementById('add-company-form').addEventListener('submit', async (e) => {
             e.preventDefault();
             const nameInput = document.getElementById('company-name');
@@ -252,7 +251,46 @@
             }
         });
 
-        // Fetch and render companies + analytics
+        // Render only owner's company
+        async function renderOwnerCompany(ownerUid) {
+            const container = document.getElementById('companies-list');
+            container.innerHTML = '';
+            // Hide analytics and add company form for owner
+            document.getElementById('analytics-summary').style.display = 'none';
+            document.getElementById('add-company-form').style.display = 'none';
+            const companiesRef = collection(db, 'companies');
+            const q = query(companiesRef, where('ownerUid', '==', ownerUid));
+            const querySnapshot = await getDocs(q);
+            let found = false;
+            querySnapshot.forEach(docSnap => {
+                found = true;
+                const company = docSnap.data();
+                const owner =
+                    (company.ownerName && company.ownerName.trim() !== "") ? company.ownerName :
+                        (company.owner && company.owner.trim() !== "") ? company.owner :
+                            "N/A";
+                const card = document.createElement('div');
+                card.className = 'card';
+                card.innerHTML = `
+                    <h3>
+                        <a href="company.html?id=${docSnap.id}">${company.name}</a>
+                    </h3>
+                    <div class="cardOwner">
+                        <p>Owner</p>
+                        <p>${owner}</p>
+                    </div>
+                    <a href="company.html?id=${docSnap.id}">
+                        <button>View</button>
+                    </a>
+                `;
+                container.appendChild(card);
+            });
+            if (!found) {
+                container.innerHTML = '<p>No company found for your account.</p>';
+            }
+        }
+
+        // Render all companies (admin)
         async function renderCompanies() {
             const container = document.getElementById('companies-list');
             container.innerHTML = '';
@@ -317,7 +355,7 @@
             });
         }
 
-        renderCompanies();
+        // Remove initial renderCompanies() call
 
         // Add click animation to sidebar nav links
         document.querySelectorAll('.sidebar nav a').forEach(link => {
@@ -357,6 +395,7 @@
             if (user) {
                 let displayName = user.displayName;
                 let role = null;
+                let ownerUid = user.uid;
                 try {
                     const userDoc = await getDoc(doc(db, "users", user.uid));
                     if (userDoc.exists()) {
@@ -369,6 +408,18 @@
                 if (role !== "admin" && role !== "owner") {
                     window.location.href = "landing.html";
                     return;
+                }
+                // Hide sidebar tabs for owner role
+                if (role === "owner") {
+                    const nav = document.querySelector('.sidebar nav');
+                    nav.innerHTML = `
+                        <a href="index.html">Dashboard</a>
+                        <a href="clients.html">Clients</a>
+                        <a href="settings.html">Settings</a>
+                    `;
+                    await renderOwnerCompany(ownerUid);
+                } else {
+                    await renderCompanies();
                 }
                 userEmail = user.email;
                 authBtn.textContent = displayName || user.email;

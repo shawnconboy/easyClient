@@ -94,6 +94,7 @@
             if (user) {
                 let displayName = user.displayName;
                 let role = null;
+                let ownerUid = user.uid;
                 try {
                     const userDoc = await getDoc(doc(db, "users", user.uid));
                     if (userDoc.exists()) {
@@ -124,6 +125,13 @@
                     await signOut(auth);
                     hideUserModal();
                 };
+
+                // Load companies based on role
+                if (role === "owner") {
+                    await loadOwnerCompany(ownerUid);
+                } else {
+                    await loadDashboardCompanies();
+                }
             } else {
                 window.location.href = "landing.html";
             }
@@ -153,6 +161,38 @@
                 cardsContainer.innerHTML = html || '<p>No companies found.</p>';
             } catch (e) {
                 cardsContainer.innerHTML = '<p>Error loading companies.</p>';
+            }
+        }
+
+        // Fetch and display only the owner's company
+        async function loadOwnerCompany(ownerUid) {
+            const cardsContainer = document.getElementById('dashboard-companies-cards');
+            cardsContainer.innerHTML = '<p>Loading...</p>';
+            try {
+                // Query for company where ownerUid == current user
+                const companiesRef = collection(db, "companies");
+                const querySnapshot = await getDocs(companiesRef);
+                let found = false;
+                let html = '';
+                querySnapshot.forEach(docSnap => {
+                    const data = docSnap.data();
+                    if (data.ownerUid === ownerUid) {
+                        found = true;
+                        html += `
+                            <div class="card">
+                                <h3>${data.name || 'Unnamed Company'}</h3>
+                                <div class="cardOwner">
+                                    <p>Owner</p>
+                                    <p>${data.ownerName || 'Unknown'}</p>
+                                </div>
+                                <button onclick="window.location.href='company.html?id=${docSnap.id}'">View</button>
+                            </div>
+                        `;
+                    }
+                });
+                cardsContainer.innerHTML = found ? html : '<p>No company found for your account.</p>';
+            } catch (e) {
+                cardsContainer.innerHTML = '<p>Error loading company.</p>';
             }
         }
 

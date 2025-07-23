@@ -230,6 +230,15 @@
                     window.location.href = "landing.html";
                     return;
                 }
+                // Unified sidebar for owner role
+                if (role === "owner") {
+                    const nav = document.querySelector('.sidebar nav');
+                    nav.innerHTML = `
+                <a href="index.html">Dashboard</a>
+                <a href="clients.html">Clients</a>
+                <a href="settings.html">Settings</a>
+            `;
+                }
                 userEmail = user.email;
                 authBtn.textContent = displayName || user.email;
                 authBtn.title = "Account";

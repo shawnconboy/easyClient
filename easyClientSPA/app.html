@@ -1,0 +1,1025 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Easy Client SPA</title>
+    <link rel="stylesheet" href="style.css" />
+</head>
+
+<body>
+    <div id="spa-root"></div>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+        import { getAuth, onAuthStateChanged, signOut, sendPasswordResetEmail, signInWithEmailAndPassword, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+        import { getFirestore, doc, getDoc, collection, getDocs, query, where, addDoc, updateDoc, setDoc } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+
+        // Firebase config
+        const firebaseConfig = {
+            apiKey: "AIzaSyA9iKdL-7YCBWrqbBmLFkw--pS0kET7qZc",
+            authDomain: "easyclient-ac627.firebaseapp.com",
+            projectId: "easyclient-ac627",
+            storageBucket: "easyclient-ac627.firebasestorage.app",
+            messagingSenderId: "247790149498",
+            appId: "1:247790149498:web:6d03859eaa5394f17fc0c3",
+            measurementId: "G-SF966FYKGB"
+        };
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+
+        // SPA root
+        const root = document.getElementById('spa-root');
+
+        // Simple router
+        function route(path) {
+            // Only update history if the path is different
+            if (window.location.pathname !== path) {
+                window.history.pushState({}, '', path);
+            }
+            renderView(path);
+        }
+        window.addEventListener('popstate', () => renderView(window.location.pathname));
+
+        // Auth state and role
+        let currentUser = null;
+        let currentRole = null;
+
+        // Sidebar rendering
+        function renderSidebar() {
+            let links = [];
+            if (currentRole === 'owner') {
+                links = [
+                    { href: '/dashboard', label: 'Dashboard' },
+                    { href: '/clients', label: 'Clients' },
+                    { href: '/settings', label: 'Settings' }
+                ];
+            } else if (currentRole === 'admin') {
+                links = [
+                    { href: '/dashboard', label: 'Dashboard' },
+                    { href: '/companies', label: 'Companies' },
+                    { href: '/users', label: 'Users' },
+                    { href: '/settings', label: 'Settings' },
+                    { href: '/landing', label: 'Landing Page' }
+                ];
+            }
+            return `
+                <aside class="sidebar">
+                    <h2>Easy Client</h2>
+                    <nav>
+                        ${links.map(link => `<a href="${link.href}" class="spa-link">${link.label}</a>`).join('')}
+                    </nav>
+                </aside>
+            `;
+        }
+
+        // Views
+        async function renderLanding() {
+            root.innerHTML = `
+        <section class="hero" style="padding:64px 0 48px 0;background:linear-gradient(90deg,#4f46e5 0%,#6366f1 100%);color:#fff;text-align:center;">
+            <h1 style="font-size:2.8em;font-weight:800;line-height:1.1;margin-bottom:22px;">
+                Grow Your Service Business Effortlessly
+            </h1>
+            <p style="font-size:1.25em;max-width:540px;margin:0 auto 28px auto;">
+                Easy Client is the modern, all-in-one booking and business management platform built for service business owners. Get more clients, save time, and scale your business with powerful tools designed for you.
+            </p>
+            <button class="cta-btn" id="get-started-btn" style="padding:16px 38px;font-size:1.18em;font-weight:700;border-radius:9px;background:#fff;color:#4f46e5;box-shadow:0 2px 12px rgba(79,70,229,0.12);border:none;cursor:pointer;transition:background 0.2s;">Get Started Free</button>
+            <div style="margin-top:18px;font-size:1.05em;color:#e0e7ff;">No credit card required. Start in minutes.</div>
+        </section>
+        <section class="features" style="padding:56px 0 48px 0;background:#f8fafc;">
+            <div style="max-width:1100px;margin:0 auto;">
+                <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:32px;">
+                    <div style="background:#fff;padding:28px 22px;border-radius:14px;box-shadow:0 4px 24px rgba(0,0,0,0.07);">
+                        <h3 style="color:#4f46e5;font-size:1.25em;font-weight:700;margin-bottom:12px;">Online Booking</h3>
+                        <p style="color:#222;">Let clients book appointments 24/7. Automated reminders reduce no-shows and keep your calendar full.</p>
+                    </div>
+                    <div style="background:#fff;padding:28px 22px;border-radius:14px;box-shadow:0 4px 24px rgba(0,0,0,0.07);">
+                        <h3 style="color:#4f46e5;font-size:1.25em;font-weight:700;margin-bottom:12px;">Client Management</h3>
+                        <p style="color:#222;">Keep all your client info organized and accessible. Track history, notes, and communication in one place.</p>
+                    </div>
+                    <div style="background:#fff;padding:28px 22px;border-radius:14px;box-shadow:0 4px 24px rgba(0,0,0,0.07);">
+                        <h3 style="color:#4f46e5;font-size:1.25em;font-weight:700;margin-bottom:12px;">Automated Invoicing</h3>
+                        <p style="color:#222;">Send professional invoices and get paid faster. Accept payments online with ease.</p>
+                    </div>
+                    <div style="background:#fff;padding:28px 22px;border-radius:14px;box-shadow:0 4px 24px rgba(0,0,0,0.07);">
+                        <h3 style="color:#4f46e5;font-size:1.25em;font-weight:700;margin-bottom:12px;">Business Insights</h3>
+                        <p style="color:#222;">See your earnings, top clients, and growth trends at a glance. Make smarter decisions with real data.</p>
+                    </div>
+                    <div style="background:#fff;padding:28px 22px;border-radius:14px;box-shadow:0 4px 24px rgba(0,0,0,0.07);">
+                        <h3 style="color:#4f46e5;font-size:1.25em;font-weight:700;margin-bottom:12px;">Team Scheduling</h3>
+                        <p style="color:#222;">Manage your staff and their calendars. Assign jobs, track hours, and avoid double-booking.</p>
+                    </div>
+                    <div style="background:#fff;padding:28px 22px;border-radius:14px;box-shadow:0 4px 24px rgba(0,0,0,0.07);">
+                        <h3 style="color:#4f46e5;font-size:1.25em;font-weight:700;margin-bottom:12px;">Marketing Tools</h3>
+                        <p style="color:#222;">Send promotions, automate follow-ups, and grow your client base with built-in marketing features.</p>
+                    </div>
+                </div>
+                <div style="text-align:center;margin-top:48px;">
+                    <span style="font-size:1.1em;color:#4f46e5;font-weight:600;">Join hundreds of business owners who trust Easy Client to grow their business.</span>
+                </div>
+            </div>
+        </section>
+        <div class="footer" style="padding:24px 0;text-align:center;color:#888;background:#fff;">&copy; 2025 Easy Client. All rights reserved.</div>
+    `;
+            document.getElementById('get-started-btn').onclick = () => route('/login');
+        }
+
+        async function renderLogin() {
+            root.innerHTML = `
+        <div class="login-container" style="max-width:360px;margin:60px auto;padding:32px 28px;background:#fff;border-radius:14px;box-shadow:0 4px 24px rgba(0,0,0,0.07);display:flex;flex-direction:column;align-items:center;">
+            <h1 style="margin-bottom:28px;font-size:2em;font-weight:700;color:#222;">Sign In</h1>
+            <form id="login-form" style="width:100%;display:flex;flex-direction:column;gap:18px;">
+                <input type="email" id="login-email" placeholder="Email" required style="padding:12px 14px;border-radius:7px;border:1px solid #e5e7eb;font-size:1em;">
+                <input type="password" id="login-password" placeholder="Password" required style="padding:12px 14px;border-radius:7px;border:1px solid #e5e7eb;font-size:1em;">
+                <button type="submit" id="login-btn" style="padding:12px 0;border-radius:7px;background:#4f46e5;color:#fff;font-size:1.08em;font-weight:600;border:none;cursor:pointer;margin-top:8px;">Sign In</button>
+                <div id="login-error" style="color:#c62828;display:none;font-size:0.98em;margin-top:-10px;"></div>
+            </form>
+            <hr style="width:100%;margin:28px 0 18px 0;border:none;border-top:1px solid #e5e7eb;">
+            <div style="display:flex;justify-content:space-between;width:100%;gap:12px;">
+                <button type="button" id="signup-btn" style="flex:1;padding:10px 0;border-radius:7px;background:#f8fafc;color:#222;font-weight:600;border:1px solid #e5e7eb;cursor:pointer;">Sign Up</button>
+                <button type="button" id="reset-btn" style="flex:1;padding:10px 0;border-radius:7px;background:#f8fafc;color:#222;font-weight:600;border:1px solid #e5e7eb;cursor:pointer;">Forgot Password</button>
+            </div>
+        </div>
+        <div id="signup-role-modal" style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.18);z-index:1000;align-items:center;justify-content:center;">
+            <div style="background:#fff;padding:32px 28px;border-radius:14px;box-shadow:0 4px 24px rgba(0,0,0,0.09);max-width:370px;width:100%;margin:auto;">
+                <h2 style="margin-bottom:22px;font-size:1.4em;font-weight:700;text-align:center;">Sign Up As...</h2>
+                <div style="display:flex;gap:18px;justify-content:center;margin-bottom:18px;">
+                    <button id="signup-owner-btn" style="padding:12px 24px;border-radius:8px;background:#fff;color:#222;font-weight:600;border:2px solid #e5e7eb;cursor:pointer;">Business Owner</button>
+                    <button id="signup-client-btn" style="padding:12px 24px;border-radius:8px;background:#fff;color:#222;font-weight:600;border:2px solid #e5e7eb;cursor:pointer;">Client</button>
+                </div>
+                <button id="signup-role-modal-close" style="display:block;margin:0 auto;margin-top:10px;background:none;border:none;color:#888;font-size:1.1em;cursor:pointer;">Cancel</button>
+            </div>
+        </div>
+        <div id="signup-form-modal" style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.18);z-index:1001;align-items:center;justify-content:center;">
+            <div id="signup-form-modal-content" style="background:#fff;padding:32px 28px;border-radius:14px;box-shadow:0 4px 24px rgba(0,0,0,0.09);max-width:370px;width:100%;margin:auto;">
+                <!-- Form will be injected here -->
+            </div>
+        </div>
+        <div id="reset-modal" style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.18);z-index:1000;align-items:center;justify-content:center;">
+            <div style="background:#fff;padding:32px 28px;border-radius:14px;box-shadow:0 4px 24px rgba(0,0,0,0.09);max-width:370px;width:100%;margin:auto;">
+                <h2 style="margin-bottom:22px;font-size:1.4em;font-weight:700;text-align:center;">Reset Password</h2>
+                <form id="reset-modal-form" style="display:flex;flex-direction:column;gap:14px;">
+                    <input type="email" id="reset-modal-email" placeholder="Enter your email" required style="padding:11px 13px;border-radius:7px;border:1px solid #e5e7eb;">
+                    <div id="reset-modal-error" style="color:#c62828;display:none;font-size:0.98em;"></div>
+                    <button type="submit" style="padding:12px 0;border-radius:7px;background:#4f46e5;color:#fff;font-size:1.08em;font-weight:600;border:none;cursor:pointer;">Send Reset Email</button>
+                </form>
+                <button id="reset-modal-close" style="display:block;margin:0 auto;margin-top:10px;background:none;border:none;color:#888;font-size:1.1em;cursor:pointer;">Cancel</button>
+            </div>
+        </div>
+    `;
+            // Login logic
+            const form = document.getElementById('login-form');
+            form.onsubmit = async (e) => {
+                e.preventDefault();
+                const email = document.getElementById('login-email').value;
+                const password = document.getElementById('login-password').value;
+                const errorBox = document.getElementById('login-error');
+                errorBox.style.display = 'none';
+                try {
+                    await signInWithEmailAndPassword(auth, email, password);
+                } catch (err) {
+                    errorBox.textContent = "Invalid email or password.";
+                    errorBox.style.display = 'block';
+                }
+            };
+            document.getElementById('signup-btn').onclick = () => {
+                document.getElementById('signup-role-modal').style.display = 'flex';
+            };
+            document.getElementById('reset-btn').onclick = () => {
+                document.getElementById('reset-modal').style.display = 'flex';
+            };
+            document.getElementById('signup-role-modal-close').onclick = () => {
+                document.getElementById('signup-role-modal').style.display = 'none';
+                document.getElementById('signup-owner-btn').style.borderColor = "#e5e7eb";
+                document.getElementById('signup-client-btn').style.borderColor = "#e5e7eb";
+            };
+            document.getElementById('reset-modal-close').onclick = () => {
+                document.getElementById('reset-modal').style.display = 'none';
+                document.getElementById('reset-modal-error').textContent = '';
+                document.getElementById('reset-modal-error').style.display = 'none';
+            };
+
+            // Modal logic - two stage
+            document.getElementById('signup-owner-btn').onclick = () => {
+                document.getElementById('signup-owner-btn').style.borderColor = "#4f46e5";
+                document.getElementById('signup-client-btn').style.borderColor = "#e5e7eb";
+                document.getElementById('signup-role-modal').style.display = 'none';
+                document.getElementById('signup-form-modal').style.display = 'flex';
+                document.getElementById('signup-form-modal-content').innerHTML = `
+            <h2 style="margin-bottom:18px;font-size:1.2em;font-weight:700;text-align:center;">Business Owner Sign Up</h2>
+            <form id="signup-owner-form" style="display:flex;flex-direction:column;gap:14px;">
+                <input type="text" id="signup-business" placeholder="Business Name" required style="padding:11px 13px;border-radius:7px;border:1px solid #e5e7eb;">
+                <input type="text" id="signup-name" placeholder="Your Name" required style="padding:11px 13px;border-radius:7px;border:1px solid #e5e7eb;">
+                <input type="email" id="signup-email" placeholder="Email" required style="padding:11px 13px;border-radius:7px;border:1px solid #e5e7eb;">
+                <input type="password" id="signup-password" placeholder="Password" required style="padding:11px 13px;border-radius:7px;border:1px solid #e5e7eb;">
+                <input type="password" id="signup-confirm" placeholder="Confirm Password" required style="padding:11px 13px;border-radius:7px;border:1px solid #e5e7eb;">
+                <input type="tel" id="signup-phone" placeholder="Phone Number" required style="padding:11px 13px;border-radius:7px;border:1px solid #e5e7eb;">
+                <div id="signup-error" style="color:#c62828;display:none;font-size:0.98em;"></div>
+                <button type="submit" style="padding:12px 0;border-radius:7px;background:#4f46e5;color:#fff;font-size:1.08em;font-weight:600;border:none;cursor:pointer;">Create Account</button>
+            </form>
+            <button id="signup-form-modal-close" style="display:block;margin:0 auto;margin-top:10px;background:none;border:none;color:#888;font-size:1.1em;cursor:pointer;">Cancel</button>
+        `;
+                document.getElementById('signup-form-modal-close').onclick = () => {
+                    document.getElementById('signup-form-modal').style.display = 'none';
+                    document.getElementById('signup-owner-btn').style.borderColor = "#e5e7eb";
+                };
+                const ownerForm = document.getElementById('signup-owner-form');
+                ownerForm.onsubmit = async (e) => {
+                    e.preventDefault();
+                    const business = document.getElementById('signup-business').value.trim();
+                    const name = document.getElementById('signup-name').value.trim();
+                    const email = document.getElementById('signup-email').value.trim();
+                    const password = document.getElementById('signup-password').value;
+                    const confirm = document.getElementById('signup-confirm').value;
+                    const phone = document.getElementById('signup-phone').value.trim();
+                    const errorBox = document.getElementById('signup-error');
+                    errorBox.style.display = 'none';
+                    if (password !== confirm) {
+                        errorBox.textContent = "Passwords do not match.";
+                        errorBox.style.display = 'block';
+                        return;
+                    }
+                    try {
+                        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+                        const user = userCredential.user;
+                        const userData = { name, email, phone, role: 'owner', business, createdAt: new Date().toISOString() };
+                        await setDoc(doc(db, 'users', user.uid), userData);
+                        await setDoc(doc(db, 'companies', user.uid), {
+                            name: business,
+                            ownerUid: user.uid,
+                            ownerEmail: email,
+                            ownerName: name,
+                            ownerPhone: phone,
+                            createdAt: new Date().toISOString()
+                        });
+                        document.getElementById('signup-form-modal').style.display = 'none';
+                        route('/dashboard');
+                    } catch (err) {
+                        errorBox.textContent = err.message.replace('Firebase: ', '');
+                        errorBox.style.display = 'block';
+                    }
+                };
+            };
+
+            document.getElementById('signup-client-btn').onclick = () => {
+                document.getElementById('signup-client-btn').style.borderColor = "#4f46e5";
+                document.getElementById('signup-owner-btn').style.borderColor = "#e5e7eb";
+                document.getElementById('signup-role-modal').style.display = 'none';
+                document.getElementById('signup-form-modal').style.display = 'flex';
+                document.getElementById('signup-form-modal-content').innerHTML = `
+            <h2 style="margin-bottom:18px;font-size:1.2em;font-weight:700;text-align:center;">Client Sign Up</h2>
+            <form id="signup-client-form" style="display:flex;flex-direction:column;gap:14px;">
+                <input type="text" id="signup-name" placeholder="Your Name" required style="padding:11px 13px;border-radius:7px;border:1px solid #e5e7eb;">
+                <input type="email" id="signup-email" placeholder="Email" required style="padding:11px 13px;border-radius:7px;border:1px solid #e5e7eb;">
+                <input type="tel" id="signup-phone" placeholder="Phone Number" required style="padding:11px 13px;border-radius:7px;border:1px solid #e5e7eb;">
+                <input type="password" id="signup-password" placeholder="Password" required style="padding:11px 13px;border-radius:7px;border:1px solid #e5e7eb;">
+                <input type="password" id="signup-confirm" placeholder="Confirm Password" required style="padding:11px 13px;border-radius:7px;border:1px solid #e5e7eb;">
+                <div id="signup-error" style="color:#c62828;display:none;font-size:0.98em;"></div>
+                <button type="submit" style="padding:12px 0;border-radius:7px;background:#4f46e5;color:#fff;font-size:1.08em;font-weight:600;border:none;cursor:pointer;">Create Account</button>
+            </form>
+            <button id="signup-form-modal-close" style="display:block;margin:0 auto;margin-top:10px;background:none;border:none;color:#888;font-size:1.1em;cursor:pointer;">Cancel</button>
+        `;
+                document.getElementById('signup-form-modal-close').onclick = () => {
+                    document.getElementById('signup-form-modal').style.display = 'none';
+                    document.getElementById('signup-client-btn').style.borderColor = "#e5e7eb";
+                };
+                const clientForm = document.getElementById('signup-client-form');
+                clientForm.onsubmit = async (e) => {
+                    e.preventDefault();
+                    const name = document.getElementById('signup-name').value.trim();
+                    const email = document.getElementById('signup-email').value.trim();
+                    const phone = document.getElementById('signup-phone').value.trim();
+                    const password = document.getElementById('signup-password').value;
+                    const confirm = document.getElementById('signup-confirm').value;
+                    const errorBox = document.getElementById('signup-error');
+                    errorBox.style.display = 'none';
+                    if (password !== confirm) {
+                        errorBox.textContent = "Passwords do not match.";
+                        errorBox.style.display = 'block';
+                        return;
+                    }
+                    try {
+                        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+                        const user = userCredential.user;
+                        const userData = { name, email, phone, role: 'client', createdAt: new Date().toISOString() };
+                        await setDoc(doc(db, 'users', user.uid), userData);
+                        document.getElementById('signup-form-modal').style.display = 'none';
+                        route('/dashboard');
+                    } catch (err) {
+                        errorBox.textContent = err.message.replace('Firebase: ', '');
+                        errorBox.style.display = 'block';
+                    }
+                };
+            };
+
+            // Forgot password modal logic
+            document.getElementById('reset-modal-form').onsubmit = async (e) => {
+                e.preventDefault();
+                const email = document.getElementById('reset-modal-email').value.trim();
+                const errorBox = document.getElementById('reset-modal-error');
+                errorBox.style.display = 'none';
+                try {
+                    await sendPasswordResetEmail(auth, email);
+                    errorBox.textContent = "Password reset email sent.";
+                    errorBox.style.color = '#1976d2';
+                    errorBox.style.display = 'block';
+                } catch (err) {
+                    errorBox.textContent = err.message.replace('Firebase: ', '');
+                    errorBox.style.color = '#c62828';
+                    errorBox.style.display = 'block';
+                }
+            };
+        }
+
+        async function renderSignup() {
+            root.innerHTML = `
+                <div class="login-container">
+                    <h1>Sign Up</h1>
+                    <form id="signup-form">
+                        <input type="text" id="signup-name" placeholder="Your Name" required />
+                        <input type="email" id="signup-email" placeholder="Email" required />
+                        <input type="password" id="signup-password" placeholder="Password" required />
+                        <input type="password" id="signup-confirm" placeholder="Confirm Password" required />
+                        <input type="text" id="signup-business" placeholder="Business Name" required />
+                        <input type="tel" id="signup-phone" placeholder="Phone Number" required />
+                        <select id="signup-role" required>
+                            <option value="">Select Role</option>
+                            <option value="owner">Business Owner</option>
+                            <option value="client">Client</option>
+                        </select>
+                        <div id="signup-error" style="color:red;display:none;"></div>
+                        <button type="submit" id="signup-btn">Create Account</button>
+                    </form>
+                </div>
+            `;
+            // Signup logic
+            const form = document.getElementById('signup-form');
+            form.onsubmit = async (e) => {
+                e.preventDefault();
+                const name = document.getElementById('signup-name').value.trim();
+                const email = document.getElementById('signup-email').value.trim();
+                const password = document.getElementById('signup-password').value;
+                const confirm = document.getElementById('signup-confirm').value;
+                const business = document.getElementById('signup-business').value.trim();
+                const phone = document.getElementById('signup-phone').value.trim();
+                const role = document.getElementById('signup-role').value;
+                const errorBox = document.getElementById('signup-error');
+                errorBox.style.display = 'none';
+                if (password !== confirm) {
+                    errorBox.textContent = "Passwords do not match.";
+                    errorBox.style.display = 'block';
+                    return;
+                }
+                try {
+                    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+                    const user = userCredential.user;
+                    const userData = { name, email, phone, role, createdAt: new Date().toISOString() };
+                    if (role === 'owner') userData.business = business;
+                    await setDoc(doc(db, 'users', user.uid), userData);
+                    if (role === 'owner') {
+                        await setDoc(doc(db, 'companies', user.uid), {
+                            name: business,
+                            ownerUid: user.uid,
+                            ownerEmail: email,
+                            ownerName: name,
+                            ownerPhone: phone,
+                            createdAt: new Date().toISOString()
+                        });
+                    }
+                    route('/dashboard');
+                } catch (err) {
+                    errorBox.textContent = err.message.replace('Firebase: ', '');
+                    errorBox.style.display = 'block';
+                }
+            };
+        }
+
+        async function renderReset() {
+            root.innerHTML = `
+                <div class="login-container">
+                    <h1>Reset Password</h1>
+                    <form id="reset-form">
+                        <input type="email" id="reset-email" placeholder="Enter your email" required />
+                        <div id="reset-error" style="color:red;display:none;"></div>
+                        <button type="submit" id="reset-btn">Send Reset Email</button>
+                    </form>
+                </div>
+            `;
+            // Reset logic
+            const form = document.getElementById('reset-form');
+            form.onsubmit = async (e) => {
+                e.preventDefault();
+                const email = document.getElementById('reset-email').value.trim();
+                const errorBox = document.getElementById('reset-error');
+                errorBox.style.display = 'none';
+                try {
+                    await sendPasswordResetEmail(auth, email);
+                    errorBox.textContent = "Password reset email sent.";
+                    errorBox.style.color = '#1976d2';
+                    errorBox.style.display = 'block';
+                } catch (err) {
+                    errorBox.textContent = err.message.replace('Firebase: ', '');
+                    errorBox.style.color = '#c62828';
+                    errorBox.style.display = 'block';
+                }
+            };
+        }
+
+        async function renderDashboard() {
+            if (currentRole === 'owner') {
+                // Owner dashboard
+                root.innerHTML = `
+                    <div class="container">
+                        ${renderSidebar()}
+                        <main class="main">
+                            <header class="topbar">
+                                <h1>Dashboard</h1>
+                                <div class="user-box" id="user-box">
+                                    <button id="auth-btn">Sign Out</button>
+                                </div>
+                            </header>
+                            <section class="content" id="dashboard-content"></section>
+                        </main>
+                    </div>
+                `;
+                document.getElementById('auth-btn').onclick = () => signOut(auth);
+                // Only show owner's company
+                const companiesRef = collection(db, "companies");
+                const q = query(companiesRef, where('ownerUid', '==', currentUser.uid));
+                const querySnapshot = await getDocs(q);
+                let html = '';
+                querySnapshot.forEach(docSnap => {
+                    const data = docSnap.data();
+                    html += `
+                        <div class="card">
+                            <h3>${data.name || 'Unnamed Company'}</h3>
+                            <div class="cardOwner">
+                                <p>Owner</p>
+                                <p>${data.ownerName || 'Unknown'}</p>
+                            </div>
+                            <button class="view-company-btn" data-id="${docSnap.id}">View</button>
+                        </div>
+                    `;
+                });
+                document.getElementById('dashboard-content').innerHTML = html || '<p>No company found for your account.</p>';
+                addSpaLinkHandlers();
+                return;
+            }
+
+            // Admin dashboard
+            root.innerHTML = `
+                <div class="container">
+                    ${renderSidebar()}
+                    <main class="main">
+                        <header class="topbar">
+                            <h1>Dashboard</h1>
+                            <div class="user-box" id="user-box">
+                                <button id="auth-btn">Sign Out</button>
+                            </div>
+                        </header>
+                        <section class="content">
+                            <div id="dashboard-earnings" class="cards" style="margin-bottom:32px;"></div>
+                            <div style="margin-bottom:24px;">
+                                <label for="company-filter" style="font-weight:600;">Show companies by:</label>
+                                <select id="company-filter" style="margin-left:12px; padding:6px 12px; border-radius:6px;">
+                                    <option value="top">Top Performing</option>
+                                    <option value="latest">Latest Added</option>
+                                </select>
+                            </div>
+                            <div id="dashboard-companies" class="cards"></div>
+                        </section>
+                    </main>
+                </div>
+            `;
+            document.getElementById('auth-btn').onclick = () => signOut(auth);
+
+            // Earnings section (placeholder logic)
+            let totalSales = 0;
+            let totalCompanies = 0;
+            // Placeholder: sales collection not yet implemented
+            // If you have a sales collection, sum all sales.amount
+            // Example: const salesSnap = await getDocs(collection(db, 'sales'));
+            // salesSnap.forEach(sale => { totalSales += sale.data().amount; });
+
+            // Companies data
+            const companiesSnap = await getDocs(collection(db, "companies"));
+            let companies = [];
+            companiesSnap.forEach(docSnap => {
+                const data = docSnap.data();
+                companies.push({
+                    id: docSnap.id,
+                    name: data.name || 'Unnamed Company',
+                    ownerName: data.ownerName || 'Unknown',
+                    createdAt: data.createdAt || '',
+                    // Placeholder for sales, replace with actual sales data if available
+                    sales: data.sales || Math.floor(Math.random() * 10000)
+                });
+            });
+            totalCompanies = companies.length;
+
+            // Earnings tile
+            document.getElementById('dashboard-earnings').innerHTML = `
+                <div class="card" style="min-width:220px;">
+                    <div style="font-size:2em; font-weight:600;">$${totalSales.toLocaleString()}</div>
+                    <div style="color:#888;">Total Earnings</div>
+                </div>
+                <div class="card" style="min-width:220px;">
+                    <div style="font-size:2em; font-weight:600;">${totalCompanies}</div>
+                    <div style="color:#888;">Total Companies</div>
+                </div>
+            `;
+
+            // Filter logic
+            function renderCompanySubset(filter) {
+                let subset = [];
+                if (filter === 'top') {
+                    subset = companies
+                        .sort((a, b) => b.sales - a.sales)
+                        .slice(0, 4); // Top 4 companies by sales
+                } else {
+                    subset = companies
+                        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+                        .slice(0, 4); // Latest 4 companies
+                }
+                document.getElementById('dashboard-companies').innerHTML = subset.map(c => `
+                    <div class="card">
+                        <h3>${c.name}</h3>
+                        <div class="cardOwner">
+                            <p>Owner</p>
+                            <p>${c.ownerName}</p>
+                        </div>
+                        <div style="margin-bottom:8px; color:#1976d2; font-weight:500;">Sales: $${c.sales.toLocaleString()}</div>
+                        <button class="view-company-btn" data-id="${c.id}">View</button>
+                    </div>
+                `).join('');
+            }
+
+            // Initial render
+            renderCompanySubset('top');
+
+            // Filter change handler
+            document.getElementById('company-filter').onchange = (e) => {
+                renderCompanySubset(e.target.value);
+            };
+
+            addSpaLinkHandlers();
+        }
+
+        async function renderCompanies() {
+            root.innerHTML = `
+        <div class="container">
+            ${renderSidebar()}
+            <main class="main">
+                <header class="topbar">
+                    <h1>Company Manager</h1>
+                    <div class="user-box" id="user-box">
+                        <button id="auth-btn">Sign Out</button>
+                    </div>
+                </header>
+                <section class="content" id="companies-content"></section>
+            </main>
+        </div>
+    `;
+            document.getElementById('auth-btn').onclick = () => signOut(auth);
+            if (currentRole === 'owner') {
+                // Only show owner's company
+                const companiesRef = collection(db, "companies");
+                const q = query(companiesRef, where('ownerUid', '==', currentUser.uid));
+                const querySnapshot = await getDocs(q);
+                let html = '<div class="cards" style="gap:28px;">';
+                querySnapshot.forEach(docSnap => {
+                    const data = docSnap.data();
+                    html += `
+                <div class="card" style="margin-bottom:0;">
+                    <h3>${data.name || 'Unnamed Company'}</h3>
+                    <div class="cardOwner">
+                        <p>Owner</p>
+                        <p>${data.ownerName || 'Unknown'}</p>
+                    </div>
+                    <button class="view-company-btn" data-id="${docSnap.id}">View</button>
+                </div>
+            `;
+                });
+                html += '</div>';
+                document.getElementById('companies-content').innerHTML = html || '<p>No company found for your account.</p>';
+            } else if (currentRole === 'admin') {
+                // Show all companies
+                const companiesRef = collection(db, "companies");
+                const querySnapshot = await getDocs(companiesRef);
+                let html = '<div class="cards" style="gap:28px;">';
+                querySnapshot.forEach(docSnap => {
+                    const data = docSnap.data();
+                    html += `
+                <div class="card" style="margin-bottom:0;">
+                    <h3>${data.name || 'Unnamed Company'}</h3>
+                    <div class="cardOwner">
+                        <p>Owner</p>
+                        <p>${data.ownerName || 'Unknown'}</p>
+                    </div>
+                    <button class="view-company-btn" data-id="${docSnap.id}">View</button>
+                </div>
+            `;
+                });
+                html += '</div>';
+                document.getElementById('companies-content').innerHTML = html || '<p>No companies found.</p>';
+            }
+            addSpaLinkHandlers();
+        }
+
+        async function renderUsers() {
+            root.innerHTML = `
+        <div class="container">
+            ${renderSidebar()}
+            <main class="main">
+                <header class="topbar">
+                    <h1>Business Owners</h1>
+                    <div class="user-box" id="user-box">
+                        <button id="auth-btn">Sign Out</button>
+                    </div>
+                </header>
+                <section class="content">
+                    <div class="card" style="padding:32px 28px;">
+                        <h2 style="margin-bottom:18px;">All Business Owners</h2>
+                        <div style="margin-bottom:18px;font-weight:600;color:#4f46e5;">Total: <span id="owner-tally"></span></div>
+                        <div style="overflow-x:auto;">
+                            <table style="width:100%;border-collapse:separate;border-spacing:0 10px;">
+                                <thead>
+                                    <tr style="background:#f8fafc;">
+                                        <th style="text-align:left;padding:12px 10px;color:#4f46e5;font-size:1.05em;">Business Name</th>
+                                        <th style="text-align:left;padding:12px 10px;color:#4f46e5;font-size:1.05em;">Owner Name</th>
+                                        <th style="text-align:left;padding:12px 10px;color:#4f46e5;font-size:1.05em;">Owner Email</th>
+                                        <th style="text-align:left;padding:12px 10px;color:#4f46e5;font-size:1.05em;">Owner Phone</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="owners-table-body"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+            </main>
+        </div>
+    `;
+            document.getElementById('auth-btn').onclick = () => signOut(auth);
+
+            // Fetch all business owners from companies collection
+            const companiesSnap = await getDocs(collection(db, 'companies'));
+            let owners = [];
+            companiesSnap.forEach(docSnap => {
+                const data = docSnap.data();
+                owners.push({
+                    business: data.name || '',
+                    ownerName: data.ownerName || '',
+                    ownerEmail: data.ownerEmail || '',
+                    ownerPhone: data.ownerPhone || ''
+                });
+            });
+
+            // Tally
+            document.getElementById('owner-tally').textContent = owners.length;
+
+            // Table rows
+            document.getElementById('owners-table-body').innerHTML = owners.map(owner => `
+        <tr style="background:#f8fafc;">
+            <td style="padding:12px 10px;border-radius:6px 0 0 6px;">${owner.business}</td>
+            <td style="padding:12px 10px;">${owner.ownerName}</td>
+            <td style="padding:12px 10px;">${owner.ownerEmail}</td>
+            <td style="padding:12px 10px;border-radius:0 6px 6px 0;">${owner.ownerPhone}</td>
+        </tr>
+    `).join('');
+
+            addSpaLinkHandlers();
+        }
+
+        async function renderSettings() {
+            // Fetch user doc for name
+            let userName = currentUser.displayName || currentUser.email;
+            try {
+                const userDoc = await getDoc(doc(db, "users", currentUser.uid));
+                if (userDoc.exists()) {
+                    userName = userDoc.data().name || userName;
+                }
+            } catch { }
+            root.innerHTML = `
+        <div class="container">
+            ${renderSidebar()}
+            <main class="main">
+                <header class="topbar">
+                    <h1>Settings</h1>
+                    <div class="user-box" id="user-box">
+                        <button id="auth-btn">Sign Out</button>
+                    </div>
+                </header>
+                <section class="content">
+                    <div class="card" style="padding:32px 28px;max-width:100%;margin:40px 0;">
+                        <h2 style="margin-bottom:24px;font-size:1.3em;font-weight:700;color:#222;">Your Account</h2>
+                        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:32px;">
+                            <div style="font-size:1.08em;">
+                                <span style="font-weight:600;color:#4f46e5;">Name:</span>
+                                <span id="user-info-name" style="margin-left:8px;color:#222;">${userName}</span>
+                            </div>
+                            <div style="font-size:1.08em;">
+                                <span style="font-weight:600;color:#4f46e5;">Email:</span>
+                                <span id="user-info-email" style="margin-left:8px;color:#222;">${currentUser.email}</span>
+                            </div>
+                        </div>
+                        <button id="reset-password-btn" style="margin-top:28px;padding:12px 0;border-radius:7px;background:#f8fafc;color:#4f46e5;font-size:1.08em;font-weight:600;border:1px solid #e5e7eb;cursor:pointer;width:100%;">Reset Password</button>
+                        <div id="reset-password-msg" style="display:none;margin-top:18px;font-size:1em;"></div>
+                    </div>
+                </section>
+            </main>
+        </div>
+    `;
+            document.getElementById('auth-btn').onclick = () => signOut(auth);
+            document.getElementById('reset-password-btn').onclick = async () => {
+                const msg = document.getElementById('reset-password-msg');
+                msg.style.display = "none";
+                msg.style.color = "#1976d2";
+                try {
+                    await sendPasswordResetEmail(auth, currentUser.email);
+                    msg.textContent = "Password reset email sent! Please check your inbox and spam/junk folder.";
+                    msg.style.display = "block";
+                } catch (err) {
+                    msg.textContent = `Error: ${err.code || ''} ${err.message || ''}`;
+                    msg.style.display = "block";
+                    msg.style.color = "red";
+                }
+            };
+            addSpaLinkHandlers();
+        }
+
+        function getCompanyIdFromPath(path) {
+            const match = path.match(/^\/company\/([^/]+)$/);
+            return match ? match[1] : null;
+        }
+
+        function getCompanyIdFromClientsPath(path) {
+            // Works for both /clients?company=ID and /clients?company=ID&...
+            const match = path.match(/[?&]company=([^&]+)/);
+            return match ? match[1] : null;
+        }
+
+        async function renderClients(path) {
+            // For owner, always show their company's clients
+            if (currentRole === 'owner') {
+                // Get owner's company
+                let companyId = null;
+                try {
+                    const companiesRef = collection(db, "companies");
+                    const q = query(companiesRef, where('ownerUid', '==', currentUser.uid));
+                    const querySnapshot = await getDocs(q);
+                    if (!querySnapshot.empty) {
+                        companyId = querySnapshot.docs[0].id;
+                    }
+                } catch { }
+                if (companyId) {
+                    // Fetch clients for this company
+                    let clients = [];
+                    try {
+                        const clientsRef = collection(db, "companies", companyId, "clients");
+                        const clientsSnap = await getDocs(clientsRef);
+                        clientsSnap.forEach(docSnap => {
+                            const data = docSnap.data();
+                            clients.push({
+                                name: data.name || "Unknown",
+                                phone: data.phone || "N/A",
+                                email: data.email || "N/A"
+                            });
+                        });
+                    } catch { }
+                    root.innerHTML = `
+                <div class="container">
+                    ${renderSidebar()}
+                    <main class="main">
+                        <header class="topbar">
+                            <h1>Clients</h1>
+                            <div class="user-box" id="user-box">
+                                <button id="auth-btn">Sign Out</button>
+                            </div>
+                        </header>
+                        <section class="content">
+                            <div class="card" style="padding:32px 28px;">
+                                <h2 style="margin-bottom:24px;">Client List</h2>
+                                ${clients.length === 0 ? `<p style="color:#888;">No clients found for this business.</p>` : `
+                                    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:18px;">
+                                        ${clients.map(client => `
+                                            <div style="background:#f8fafc;padding:18px 16px;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.04);margin-bottom:0;">
+                                                <div style="font-weight:600;color:#4f46e5;margin-bottom:8px;">${client.name}</div>
+                                                <div style="margin-bottom:6px;"><span style="font-weight:500;">Phone:</span> ${client.phone}</div>
+                                                <div><span style="font-weight:500;">Email:</span> ${client.email}</div>
+                                            </div>
+                                        `).join('')}
+                                    </div>
+                                `}
+                            </div>
+                        </section>
+                    </main>
+                </div>
+            `;
+                    document.getElementById('auth-btn').onclick = () => signOut(auth);
+                    addSpaLinkHandlers();
+                    return;
+                } else {
+                    // No company found for owner
+                    root.innerHTML = `
+                <div class="container">
+                    ${renderSidebar()}
+                    <main class="main">
+                        <header class="topbar">
+                            <h1>Clients</h1>
+                            <div class="user-box" id="user-box">
+                                <button id="auth-btn">Sign Out</button>
+                            </div>
+                        </header>
+                        <section class="content">
+                            <div class="card" style="padding:32px 28px;">
+                                <h2 style="margin-bottom:24px;">Client List</h2>
+                                <p style="color:#888;">No company found for your account.</p>
+                            </div>
+                        </section>
+                    </main>
+                </div>
+            `;
+                    document.getElementById('auth-btn').onclick = () => signOut(auth);
+                    addSpaLinkHandlers();
+                    return;
+                }
+            }
+
+            // ...existing code for admin/general clients page...
+            // ...existing code...
+        }
+
+        async function renderCompanyDetail(companyId) {
+            // Fetch company data
+            const companyDoc = await getDoc(doc(db, "companies", companyId));
+            if (!companyDoc.exists()) {
+                root.innerHTML = `
+                    <div class="container">
+                        ${renderSidebar()}
+                        <main class="main">
+                            <section class="content">
+                                <h2>Company not found.</h2>
+                                <button onclick="route('/dashboard')">Back to Dashboard</button>
+                            </section>
+                        </main>
+                    </div>
+                `;
+                addSpaLinkHandlers();
+                return;
+            }
+            const data = companyDoc.data();
+            const services = Array.isArray(data.services) ? data.services : [];
+            root.innerHTML = `
+        <div class="container">
+            ${renderSidebar()}
+            <main class="main">
+                <header class="topbar">
+                    <h1>Company Details</h1>
+                    <div class="user-box" id="user-box">
+                        <button id="auth-btn">Sign Out</button>
+                    </div>
+                </header>
+                <section class="content">
+                    <div class="card" style="padding:32px 28px;margin-bottom:32px;">
+                        <h2 style="margin-bottom:24px;">${data.name || 'Unnamed Company'}</h2>
+                        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:18px;margin-bottom:28px;">
+                            <div style="background:#f8fafc;padding:18px 16px;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.04);">
+                                <span style="font-weight:600;color:#4f46e5;">Owner</span><br>
+                                <span>${data.ownerName || 'Unknown'}</span>
+                            </div>
+                            <div style="background:#f8fafc;padding:18px 16px;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.04);">
+                                <span style="font-weight:600;color:#4f46e5;">Phone</span><br>
+                                <span>${data.ownerPhone || 'N/A'}</span>
+                            </div>
+                            <div style="background:#f8fafc;padding:18px 16px;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.04);">
+                                <span style="font-weight:600;color:#4f46e5;">Email</span><br>
+                                <span>${data.ownerEmail || 'N/A'}</span>
+                            </div>
+                        </div>
+                        <button class="btn" id="see-clients-btn" style="margin-bottom:18px;">See Client List</button>
+                        <div class="section-space"></div>
+                        <h3 style="margin-bottom:16px;">Services & Prices</h3>
+                        <div style="margin-bottom:0;">
+                            ${services.length === 0 ? '<p style="color:#888;">No services listed.</p>' : `
+                                <table style="width:100%;margin-top:8px;border-collapse:separate;border-spacing:0 10px;">
+                                    <thead>
+                                        <tr>
+                                            <th style="text-align:left;padding:10px 8px;color:#4f46e5;font-size:1.08em;">Service</th>
+                                            <th style="text-align:left;padding:10px 8px;color:#4f46e5;font-size:1.08em;">Price</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${services.map(s => `
+                                            <tr style="background:#f8fafc;">
+                                                <td style="padding:10px 8px;border-radius:6px 0 0 6px;">${s.name}</td>
+                                                <td style="padding:10px 8px;border-radius:0 6px 6px 0;">$${s.price}</td>
+                                            </tr>
+                                        `).join('')}
+                                    </tbody>
+                                </table>
+                            `}
+                        </div>
+                    </div>
+                </section>
+            </main>
+        </div>
+    `;
+            document.getElementById('auth-btn').onclick = () => signOut(auth);
+            document.getElementById('see-clients-btn').onclick = (e) => {
+                e.preventDefault();
+                route(`/clients?company=${companyId}`);
+            };
+            addSpaLinkHandlers();
+        }
+
+        // Main view renderer
+        async function renderView(path) {
+            // Add company detail route FIRST so it matches before role-based navigation
+            const companyId = getCompanyIdFromPath(path);
+            if (companyId) return renderCompanyDetail(companyId);
+
+            // Add company-specific clients route BEFORE role-based navigation
+            if (getCompanyIdFromClientsPath(window.location.pathname + window.location.search)) {
+                return renderClients(window.location.pathname + window.location.search);
+            }
+
+            if (!currentUser) {
+                // Always render login view, but do NOT call route('/login') if already on /login
+                if (path !== '/login' && path !== '/signup' && path !== '/reset') {
+                    renderLogin();
+                    return;
+                }
+                if (path === '/login') return renderLogin();
+                if (path === '/signup') return renderSignup();
+                if (path === '/reset') return renderReset();
+                return renderLogin();
+            }
+            // Role-based navigation
+            if (currentRole === 'owner') {
+                if (path === '/dashboard' || path === '/') return renderDashboard();
+                if (path === '/settings') return renderSettings();
+                if (path === '/clients') return renderClients();
+                if (path === '/companies') return renderCompanies();
+                return renderDashboard();
+            } else if (currentRole === 'admin') {
+                if (path === '/dashboard' || path === '/') return renderDashboard();
+                if (path === '/settings') return renderSettings();
+                if (path === '/companies') return renderCompanies();
+                if (path === '/users') return renderUsers();
+                if (path === '/landing') return renderLanding();
+                return renderDashboard();
+            }
+            // Default fallback
+            return renderLanding();
+        }
+
+        // SPA link handler
+        function addSpaLinkHandlers() {
+            document.querySelectorAll('.spa-link').forEach(link => {
+                link.onclick = (e) => {
+                    e.preventDefault();
+                    route(link.getAttribute('href'));
+                };
+            });
+            // Add handler for company card "View" buttons
+            document.querySelectorAll('.view-company-btn').forEach(btn => {
+                btn.onclick = (e) => {
+                    const id = btn.getAttribute('data-id');
+                    if (id) route(`/company/${id}`);
+                };
+            });
+        }
+
+        // Auth and initial route
+        onAuthStateChanged(auth, async user => {
+            if (user) {
+                currentUser = user;
+                let role = null;
+                try {
+                    const userDoc = await getDoc(doc(db, "users", user.uid));
+                    if (userDoc.exists()) role = userDoc.data().role;
+                } catch { }
+                currentRole = role;
+                // Only allow admin/owner
+                if (role !== "admin" && role !== "owner") {
+                    currentUser = null;
+                    currentRole = null;
+                    route('/');
+                    return;
+                }
+                renderView(window.location.pathname);
+            } else {
+                currentUser = null;
+                currentRole = null;
+                renderView(window.location.pathname);
+            }
+        });
+
+        // Initial load
+        renderView(window.location.pathname);
+
+    </script>
+</body>
+
+</html>
