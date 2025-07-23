@@ -62,7 +62,7 @@
     </div>
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
-        import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+        import { getAuth, onAuthStateChanged, signOut, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
         import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
         // Your web app's Firebase configuration
@@ -148,11 +148,11 @@
                     resetPasswordMsg.style.display = "none";
                     resetPasswordMsg.style.color = "#1976d2";
                     try {
-                        await auth.sendPasswordResetEmail(user.email);
-                        resetPasswordMsg.textContent = "Password reset email sent!";
+                        await sendPasswordResetEmail(auth, user.email);
+                        resetPasswordMsg.textContent = "Password reset email sent! Please check your inbox and spam/junk folder.";
                         resetPasswordMsg.style.display = "block";
                     } catch (err) {
-                        resetPasswordMsg.textContent = "Error sending reset email.";
+                        resetPasswordMsg.textContent = `Error: ${err.code || ''} ${err.message || ''}`;
                         resetPasswordMsg.style.display = "block";
                         resetPasswordMsg.style.color = "red";
                     }
