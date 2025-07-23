@@ -847,94 +847,91 @@
         }
 
         async function renderClients(path) {
-            // For owner, always show their company's clients
-            if (currentRole === 'owner') {
-                // Get owner's company
-                let companyId = null;
-                try {
-                    const companiesRef = collection(db, "companies");
-                    const q = query(companiesRef, where('ownerUid', '==', currentUser.uid));
-                    const querySnapshot = await getDocs(q);
-                    if (!querySnapshot.empty) {
-                        companyId = querySnapshot.docs[0].id;
-                    }
-                } catch { }
-                if (companyId) {
-                    // Fetch clients for this company
-                    let clients = [];
-                    try {
-                        const clientsRef = collection(db, "companies", companyId, "clients");
-                        const clientsSnap = await getDocs(clientsRef);
-                        clientsSnap.forEach(docSnap => {
-                            const data = docSnap.data();
-                            clients.push({
-                                name: data.name || "Unknown",
-                                phone: data.phone || "N/A",
-                                email: data.email || "N/A"
-                            });
-                        });
-                    } catch { }
-                    root.innerHTML = `
-                <div class="container">
-                    ${renderSidebar()}
-                    <main class="main">
-                        <header class="topbar">
-                            <h1>Clients</h1>
-                            <div class="user-box" id="user-box">
-                                <button id="auth-btn">Sign Out</button>
-                            </div>
-                        </header>
-                        <section class="content">
-                            <div class="card" style="padding:32px 28px;">
-                                <h2 style="margin-bottom:24px;">Client List</h2>
-                                ${clients.length === 0 ? `<p style="color:#888;">No clients found for this business.</p>` : `
-                                    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:18px;">
-                                        ${clients.map(client => `
-                                            <div style="background:#f8fafc;padding:18px 16px;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.04);margin-bottom:0;">
-                                                <div style="font-weight:600;color:#4f46e5;margin-bottom:8px;">${client.name}</div>
-                                                <div style="margin-bottom:6px;"><span style="font-weight:500;">Phone:</span> ${formatPhone(client.phone)}</div>
-                                                <div><span style="font-weight:500;">Email:</span> ${client.email}</div>
-                                            </div>
-                                        `).join('')}
-                                    </div>
-                                `}
-                            </div>
-                        </section>
-                    </main>
-                </div>
-            `;
-                    document.getElementById('auth-btn').onclick = () => signOut(auth);
-                    addSpaLinkHandlers();
-                    return;
-                } else {
-                    // No company found for owner
-                    root.innerHTML = `
-                <div class="container">
-                    ${renderSidebar()}
-                    <main class="main">
-                        <header class="topbar">
-                            <h1>Clients</h1>
-                            <div class="user-box" id="user-box">
-                                <button id="auth-btn">Sign Out</button>
-                            </div>
-                        </header>
-                        <section class="content">
-                            <div class="card" style="padding:32px 28px;">
-                                <h2 style="margin-bottom:24px;">Client List</h2>
-                                <p style="color:#888;">No company found for your account.</p>
-                            </div>
-                        </section>
-                    </main>
-                </div>
-            `;
-                    document.getElementById('auth-btn').onclick = () => signOut(auth);
-                    addSpaLinkHandlers();
-                    return;
-                }
+            // Extract company ID from URL
+            const companyId = getCompanyIdFromClientsPath(path);
+            if (!companyId) {
+                root.innerHTML = `<p style="color:red;">Invalid company ID.</p>`;
+                return;
             }
 
-            // ...existing code for admin/general clients page...
-            // ...existing code...
+            // Fetch company data
+            const companyDoc = await getDoc(doc(db, "companies", companyId));
+            if (!companyDoc.exists()) {
+                root.innerHTML = `
+                    <div class="container">
+                        ${renderSidebar()}
+                        <main class="main">
+                            <section class="content">
+                                <h2>Company not found.</h2>
+                                <button onclick="route('/dashboard')">Back to Dashboard</button>
+                            </section>
+                        </main>
+                    </div>
+                `;
+                addSpaLinkHandlers();
+                return;
+            }
+            const data = companyDoc.data();
+            let services = Array.isArray(data.services) ? data.services : [];
+
+            root.innerHTML = `
+    <div class="container">
+        ${renderSidebar()}
+        <main class="main">
+            <header class="topbar">
+                <h1>Client List for ${data.name || 'Unnamed Company'}</h1>
+                <div class="user-box" id="user-box">
+                    <button id="auth-btn">Sign Out</button>
+                </div>
+            </header>
+            <section class="content">
+                <div class="card" style="padding:32px 28px;margin-bottom:32px;">
+                    <h2 style="margin-bottom:24px;">Clients</h2>
+                    <div style="overflow-x:auto;">
+                        <table style="width:100%;border-collapse:separate;border-spacing:0 10px;">
+                            <thead>
+                                <tr style="background:#f8fafc;">
+                                    <th style="text-align:left;padding:12px 10px;color:#4f46e5;font-size:1.05em;">Client Name</th>
+                                    <th style="text-align:left;padding:12px 10px;color:#4f46e5;font-size:1.05em;">Email</th>
+                                    <th style="text-align:left;padding:12px 10px;color:#4f46e5;font-size:1.05em;">Phone</th>
+                                    <th style="text-align:left;padding:12px 10px;color:#4f46e5;font-size:1.05em;">Services</th>
+                                </tr>
+                            </thead>
+                            <tbody id="clients-table-body"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+    `;
+            document.getElementById('auth-btn').onclick = () => signOut(auth);
+
+            // Fetch clients for this company
+            const clientsSnap = await getDocs(query(collection(db, "users"), where("role", "==", "client")));
+            let clients = [];
+            clientsSnap.forEach(docSnap => {
+                const data = docSnap.data();
+                if (data.companyId === companyId) {
+                    clients.push(data);
+                }
+            });
+
+            // Table rows
+            document.getElementById('clients-table-body').innerHTML = clients.map(client => `
+        <tr style="background:#f8fafc;">
+            <td style="padding:12px 10px;border-radius:6px 0 0 6px;">${client.name}</td>
+            <td style="padding:12px 10px;">${client.email}</td>
+            <td style="padding:12px 10px;">${formatPhone(client.phone)}</td>
+            <td style="padding:12px 10px;border-radius:0 6px 6px 0;">
+                ${client.services && client.services.length > 0
+                    ? client.services.map(s => s.name).join(', ')
+                    : 'No services assigned'}
+            </td>
+        </tr>
+    `).join('');
+
+            addSpaLinkHandlers();
         }
 
         async function renderCompanyDetail(companyId) {
@@ -1079,7 +1076,9 @@
             document.getElementById('auth-btn').onclick = () => signOut(auth);
             document.getElementById('see-clients-btn').onclick = (e) => {
                 e.preventDefault();
-                route(`/clients?company=${companyId}`);
+                // Update the URL and render the client list for this company
+                window.history.pushState({}, '', `/clients?company=${companyId}`);
+                renderClients(`/clients?company=${companyId}`);
             };
             addSpaLinkHandlers();
 
