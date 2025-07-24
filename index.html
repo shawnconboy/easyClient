@@ -137,7 +137,8 @@
 
         async function renderLogin() {
             root.innerHTML = `
-        <div class="login-container" style="max-width:360px;margin:60px auto;padding:32px 28px;background:#fff;border-radius:14px;box-shadow:0 4px 24px rgba(0,0,0,0.07);display:flex;flex-direction:column;align-items:center;">
+    <div style="display:flex;align-items:center;justify-content:center;min-height:100vh;">
+        <div class="login-container" style="min-width:420px;max-width:520px;margin:0 auto;padding:32px 28px;background:#fff;border-radius:14px;box-shadow:0 4px 24px rgba(0,0,0,0.07);display:flex;flex-direction:column;align-items:center;">
             <h1 style="margin-bottom:28px;font-size:2em;font-weight:700;color:#222;">Sign In</h1>
             <form id="login-form" style="width:100%;display:flex;flex-direction:column;gap:18px;">
                 <input type="email" id="login-email" placeholder="Email" required style="padding:12px 14px;border-radius:7px;border:1px solid #e5e7eb;font-size:1em;">
@@ -151,6 +152,7 @@
                 <button type="button" id="reset-btn" style="flex:1;padding:10px 0;border-radius:7px;background:#f8fafc;color:#222;font-weight:600;border:1px solid #e5e7eb;cursor:pointer;">Forgot Password</button>
             </div>
         </div>
+    </div>
         <div id="signup-role-modal" style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.18);z-index:1000;align-items:center;justify-content:center;">
             <div style="background:#fff;padding:32px 28px;border-radius:14px;box-shadow:0 4px 24px rgba(0,0,0,0.09);max-width:370px;width:100%;margin:auto;">
                 <h2 style="margin-bottom:22px;font-size:1.4em;font-weight:700;text-align:center;">Sign Up As...</h2>
@@ -346,25 +348,27 @@
 
         async function renderSignup() {
             root.innerHTML = `
-                <div class="login-container">
-                    <h1>Sign Up</h1>
-                    <form id="signup-form">
-                        <input type="text" id="signup-name" placeholder="Your Name" required />
-                        <input type="email" id="signup-email" placeholder="Email" required />
-                        <input type="password" id="signup-password" placeholder="Password" required />
-                        <input type="password" id="signup-confirm" placeholder="Confirm Password" required />
-                        <input type="text" id="signup-business" placeholder="Business Name" required />
-                        <input type="tel" id="signup-phone" placeholder="Phone Number" required />
-                        <select id="signup-role" required>
-                            <option value="">Select Role</option>
-                            <option value="owner">Business Owner</option>
-                            <option value="client">Client</option>
-                        </select>
-                        <div id="signup-error" style="color:red;display:none;"></div>
-                        <button type="submit" id="signup-btn">Create Account</button>
-                    </form>
-                </div>
-            `;
+        <div style="display:flex;align-items:center;justify-content:center;min-height:100vh;">
+            <div class="login-container" style="min-width:300px;max-width:420px;margin:0 auto;padding:32px 28px;background:#fff;border-radius:14px;box-shadow:0 4px 24px rgba(0,0,0,0.07);">
+                <h1>Sign Up</h1>
+                <form id="signup-form">
+                    <input type="text" id="signup-name" placeholder="Your Name" required />
+                    <input type="email" id="signup-email" placeholder="Email" required />
+                    <input type="password" id="signup-password" placeholder="Password" required />
+                    <input type="password" id="signup-confirm" placeholder="Confirm Password" required />
+                    <input type="text" id="signup-business" placeholder="Business Name" required />
+                    <input type="tel" id="signup-phone" placeholder="Phone Number" required />
+                    <select id="signup-role" required>
+                        <option value="">Select Role</option>
+                        <option value="owner">Business Owner</option>
+                        <option value="client">Client</option>
+                    </select>
+                    <div id="signup-error" style="color:red;display:none;"></div>
+                    <button type="submit" id="signup-btn">Create Account</button>
+                </form>
+            </div>
+        </div>
+    `;
             // Signup logic
             const form = document.getElementById('signup-form');
             form.onsubmit = async (e) => {
@@ -410,15 +414,17 @@
 
         async function renderReset() {
             root.innerHTML = `
-                <div class="login-container">
-                    <h1>Reset Password</h1>
-                    <form id="reset-form">
-                        <input type="email" id="reset-email" placeholder="Enter your email" required />
-                        <div id="reset-error" style="color:red;display:none;"></div>
-                        <button type="submit" id="reset-btn">Send Reset Email</button>
-                    </form>
-                </div>
-            `;
+        <div style="display:flex;align-items:center;justify-content:center;min-height:100vh;">
+            <div class="login-container" style="min-width:399px;max-width:420px;margin:0 auto;padding:32px 28px;background:#fff;border-radius:14px;box-shadow:0 4px 24px rgba(0,0,0,0.07);">
+                <h1>Reset Password</h1>
+                <form id="reset-form">
+                    <input type="email" id="reset-email" placeholder="Enter your email" required />
+                    <div id="reset-error" style="color:red;display:none;"></div>
+                    <button type="submit" id="reset-btn">Send Reset Email</button>
+                </form>
+            </div>
+        </div>
+    `;
             // Reset logic
             const form = document.getElementById('reset-form');
             form.onsubmit = async (e) => {
@@ -1309,7 +1315,7 @@
 
             // Add company-specific clients route BEFORE role-based navigation
             if (getCompanyIdFromClientsPath(window.location.pathname + window.location.search)) {
-                return renderClients(window.location.pathname + window.location.search);
+                return renderClients(window.pathname + window.location.search);
             }
 
             if (!currentUser) {
