@@ -1486,14 +1486,15 @@
                 if (role !== "admin" && role !== "owner") {
                     currentUser = null;
                     currentRole = null;
-                    route('/');
+                    route('/login');
                     return;
                 }
                 renderView(window.location.pathname);
             } else {
                 currentUser = null;
                 currentRole = null;
-                renderView(window.location.pathname);
+                // Redirect to login page when user signs out
+                route('/login');
             }
         });
 
