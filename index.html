@@ -282,49 +282,21 @@
                 document.getElementById('signup-role-modal').style.display = 'none';
                 document.getElementById('signup-form-modal').style.display = 'flex';
                 document.getElementById('signup-form-modal-content').innerHTML = `
-            <h2 style="margin-bottom:18px;font-size:1.2em;font-weight:700;text-align:center;">Client Sign Up</h2>
-            <form id="signup-client-form" style="display:flex;flex-direction:column;gap:14px;">
-                <input type="text" id="signup-name" placeholder="Your Name" required style="padding:11px 13px;border-radius:7px;border:1px solid #e5e7eb;">
-                <input type="email" id="signup-email" placeholder="Email" required style="padding:11px 13px;border-radius:7px;border:1px solid #e5e7eb;">
-                <input type="tel" id="signup-phone" placeholder="Phone Number" required style="padding:11px 13px;border-radius:7px;border:1px solid #e5e7eb;">
-                <input type="password" id="signup-password" placeholder="Password" required style="padding:11px 13px;border-radius:7px;border:1px solid #e5e7eb;">
-                <input type="password" id="signup-confirm" placeholder="Confirm Password" required style="padding:11px 13px;border-radius:7px;border:1px solid #e5e7eb;">
-                <div id="signup-error" style="color:#c62828;display:none;font-size:0.98em;"></div>
-                <button type="submit" style="padding:12px 0;border-radius:7px;background:#4f46e5;color:#fff;font-size:1.08em;font-weight:600;border:none;cursor:pointer;">Create Account</button>
-            </form>
-            <button id="signup-form-modal-close" style="display:block;margin:0 auto;margin-top:10px;background:none;border:none;color:#888;font-size:1.1em;cursor:pointer;">Cancel</button>
+            <h2 style="margin-bottom:18px;font-size:1.2em;font-weight:700;text-align:center;color:#4f46e5;">Client Access</h2>
+            <div style="text-align:center;padding:20px;background:#f8fafc;border-radius:8px;margin-bottom:20px;">
+                <p style="margin-bottom:16px;color:#374151;line-height:1.5;">
+                    Clients don't need to sign up directly. Your business owner will add you to their client list, 
+                    and you'll receive booking links and communication through their system.
+                </p>
+                <p style="color:#6b7280;font-size:0.9em;">
+                    If you're a business owner, please select "Business Owner" instead.
+                </p>
+            </div>
+            <button id="signup-form-modal-close" style="display:block;margin:0 auto;padding:10px 24px;background:#4f46e5;color:#fff;border:none;border-radius:7px;font-weight:600;cursor:pointer;">Got it</button>
         `;
                 document.getElementById('signup-form-modal-close').onclick = () => {
                     document.getElementById('signup-form-modal').style.display = 'none';
                     document.getElementById('signup-client-btn').style.borderColor = "#e5e7eb";
-                };
-                const clientForm = document.getElementById('signup-client-form');
-                clientForm.onsubmit = async (e) => {
-                    e.preventDefault();
-                    const name = document.getElementById('signup-name').value.trim();
-                    const email = document.getElementById('signup-email').value.trim();
-                    const phoneRaw = document.getElementById('signup-phone').value.trim();
-                    const phone = phoneRaw.replace(/\s+/g, ''); // strip whitespace
-                    const password = document.getElementById('signup-password').value;
-                    const confirm = document.getElementById('signup-confirm').value;
-                    const errorBox = document.getElementById('signup-error');
-                    errorBox.style.display = 'none';
-                    if (password !== confirm) {
-                        errorBox.textContent = "Passwords do not match.";
-                        errorBox.style.display = 'block';
-                        return;
-                    }
-                    try {
-                        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-                        const user = userCredential.user;
-                        const userData = { name, email, phone, role: 'client', createdAt: new Date().toISOString() };
-                        await setDoc(doc(db, 'users', user.uid), userData);
-                        document.getElementById('signup-form-modal').style.display = 'none';
-                        route('/dashboard');
-                    } catch (err) {
-                        errorBox.textContent = err.message.replace('Firebase: ', '');
-                        errorBox.style.display = 'block';
-                    }
                 };
             };
 
@@ -462,15 +434,14 @@
                 // Fetch services
                 let services = Array.isArray(companyDoc?.services) ? companyDoc.services : [];
 
-                // Fetch clients for this company
-                const clientsSnap = await getDocs(query(collection(db, "users"), where("role", "==", "client")));
+                // Fetch clients for this company (from subcollection)
                 let clients = [];
-                clientsSnap.forEach(docSnap => {
-                    const data = docSnap.data();
-                    if (data.companyId === companyId) {
-                        clients.push(data);
-                    }
-                });
+                if (companyId) {
+                    const clientsSnap = await getDocs(collection(db, "companies", companyId, "clients"));
+                    clientsSnap.forEach(docSnap => {
+                        clients.push({ id: docSnap.id, ...docSnap.data() });
+                    });
+                }
 
                 root.innerHTML = `
 <div class="container">
@@ -703,14 +674,13 @@
                         return;
                     }
                     try {
-                        await addDoc(collection(db, 'users'), {
+                        // Store client in company's subcollection instead of general users
+                        await addDoc(collection(db, 'companies', companyId, 'clients'), {
                             name,
                             email,
                             phone,
                             address,
                             notes,
-                            role: 'client',
-                            companyId,
                             createdAt: new Date().toISOString()
                         });
                         modal.style.display = 'none';
@@ -1172,15 +1142,14 @@
 
             document.getElementById('auth-btn').onclick = () => signOut(auth);
 
-            // Fetch clients for this company
-            const clientsSnap = await getDocs(query(collection(db, "users"), where("role", "==", "client")));
+            // Fetch clients for this company (from subcollection)
             let clients = [];
-            clientsSnap.forEach(docSnap => {
-                const data = docSnap.data();
-                if (data.companyId === companyId) {
-                    clients.push(data);
-                }
-            });
+            if (companyId) {
+                const clientsSnap = await getDocs(collection(db, "companies", companyId, "clients"));
+                clientsSnap.forEach(docSnap => {
+                    clients.push({ id: docSnap.id, ...docSnap.data() });
+                });
+            }
 
             // Table rows
             document.getElementById('clients-table-body').innerHTML = clients.map(client => `
@@ -1220,14 +1189,13 @@
                 }
                 try {
                     // Create client user document
-                    const clientRef = await addDoc(collection(db, 'users'), {
+                    // Store client in company's subcollection instead of general users
+                    const clientRef = await addDoc(collection(db, 'companies', companyId, 'clients'), {
                         name,
                         email,
                         phone,
                         address,
                         notes,
-                        role: 'client',
-                        companyId,
                         createdAt: new Date().toISOString()
                     });
                     modal.style.display = 'none';
