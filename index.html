@@ -1072,7 +1072,7 @@
                                 const row = cell.parentElement;
                                 const tbody = row.parentElement;
                                 const hour = Array.from(tbody.children).indexOf(row);
-                                const day = Array.from(row.children).indexOf(cell) - 1; // -1 for hour label
+                                const day = Array.from(row.children).indexOf(cell); // FIXED: do not subtract 1
                                 // Show add booking modal
                                 showAddBookingModal(day, hour);
                             };
