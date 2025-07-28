@@ -469,6 +469,11 @@
                     </div>
                 </div>
             </div>
+            <!-- Booking Section -->
+            <div class="card" style="padding:28px 24px;margin-bottom:28px;">
+                <h2 style="margin-bottom:16px;">Bookings</h2>
+                <div id="booking-calendar" style="overflow-x:auto;"></div>
+            </div>
             <!-- Services Section -->
             <div class="card" style="padding:28px 24px;margin-bottom:28px;">
                 <h2 style="margin-bottom:16px;">Services & Prices</h2>
@@ -554,7 +559,7 @@
                 </form>
             </div>
             <!-- Clients Section -->
-            <div class="card" style="padding:28px 24px;margin-bottom:28px;">
+            <div class="card" style="padding:28px 24px;">
                 <div style="display:flex;justify-content:space-between;align-items:center;">
                     <h2 style="margin-bottom:0;">Clients</h2>
                     <button id="add-client-btn" style="padding:10px 22px;border-radius:7px;background:#4f46e5;color:#fff;font-weight:600;border:none;cursor:pointer;">+ Add Client</button>
@@ -582,13 +587,6 @@
                             `).join('')}
                         </tbody>
                     </table>
-                </div>
-            </div>
-            <!-- Booking Section -->
-            <div class="card" style="padding:28px 24px;">
-                <h2 style="margin-bottom:16px;">Bookings</h2>
-                <div id="booking-calendar" style="min-height:320px;background:#f8fafc;border-radius:12px;display:flex;align-items:center;justify-content:center;color:#888;">
-                    Calendar coming soon...
                 </div>
             </div>
         </section>
@@ -691,6 +689,417 @@
                     }
                 };
 
+                // Render booking calendar for business owner
+                // Fetch availability from companyDoc
+                let availability = Array.isArray(companyDoc?.availability) ? companyDoc.availability : [
+                    { day: 'Sunday', enabled: false, start: '09:00', end: '17:00' },
+                    { day: 'Monday', enabled: true, start: '09:00', end: '17:00' },
+                    { day: 'Tuesday', enabled: true, start: '09:00', end: '17:00' },
+                    { day: 'Wednesday', enabled: true, start: '09:00', end: '17:00' },
+                    { day: 'Thursday', enabled: true, start: '09:00', end: '17:00' },
+                    { day: 'Friday', enabled: true, start: '09:00', end: '17:00' },
+                    { day: 'Saturday', enabled: false, start: '09:00', end: '17:00' },
+                ];
+
+                // Fetch bookings for this company (for now, just show static demo tiles)
+                // In a real app, fetch from Firestore: collection(db, 'companies', companyId, 'bookings')
+                // Add a static booking for demo/testing purposes
+                let bookings = [
+                    { day: 1, hour: 10, client: 'Jane Doe', service: 'Haircut' }
+                ];
+
+                // Build calendar grid
+                const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+                let calendarHtml = '<table style="border-collapse:separate;width:100%;min-width:700px;">';
+                // Header row with sticky th
+                calendarHtml += '<thead><tr><th style="width:48px;position:sticky;top:0;z-index:3;background:#fff;"></th>';
+                for (let d = 0; d < 7; d++) {
+                    calendarHtml += `<th style="text-align:center;padding:6px 0;font-weight:700;color:#4f46e5;background:#f3f4f6;position:sticky;top:0;z-index:2;">${days[d]}</th>`;
+                }
+                calendarHtml += '</tr></thead><tbody>';
+                let firstAvailRow = null;
+                for (let h = 0; h < 24; h++) {
+                    let rowHasAvail = false;
+                    let rowHtml = `<tr>`;
+                    // Hour label
+                    rowHtml += `<td style="text-align:right;padding:2px 8px;color:#888;font-size:0.98em;background:#f3f4f6;">${h}:00</td>`;
+                    for (let d = 0; d < 7; d++) {
+                        // Is this hour available?
+                        const avail = availability[d];
+                        let isAvailable = false;
+                        if (avail.enabled) {
+                            const startH = parseInt(avail.start.split(':')[0], 10);
+                            const endH = parseInt(avail.end.split(':')[0], 10);
+                            isAvailable = h >= startH && h < endH;
+                        }
+                        // Check for a booking tile (static demo for now)
+                        const booking = bookings.find(b => b.day === d && b.hour === h);
+                        // 'Active' (available) cells are determined by business owner's set availability, not hardcoded
+                        let cellStyle = `padding:0;height:64px;min-width:80px;`;
+                        let cellClass = '';
+                        if (isAvailable) {
+                            cellClass = 'modern-available';
+                            rowHasAvail = true;
+                        } else {
+                            cellClass = 'modern-unavailable';
+                        }
+                        rowHtml += `<td class="${cellClass}" style="${cellStyle}position:relative;">`;
+                        if (booking) {
+                            rowHtml += `<div class="booking-tile" data-day="${d}" data-hour="${h}" style="position:absolute;top:2px;left:2px;right:2px;bottom:2px;background:#4f46e5;color:#fff;border-radius:7px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:1.08em;font-weight:600;box-shadow:0 2px 8px rgba(79,70,229,0.10);z-index:2;cursor:pointer;line-height:1.32;padding:0 6px;min-height:56px;">
+                                <span style='font-size:1em;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%;text-align:center;'>${booking.client}</span>
+                                <span style='font-size:0.97em;font-weight:400;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%;text-align:center;'>${booking.service}</span>
+                            </div>`;
+                        }
+                        rowHtml += `</td>`;
+                    }
+                    rowHtml += `</tr>`;
+                    if (firstAvailRow === null && rowHasAvail) firstAvailRow = h;
+                    calendarHtml += rowHtml;
+                }
+                calendarHtml += '</tbody></table>';
+                // Make calendar scrollable and set scroll position
+                document.getElementById('booking-calendar').innerHTML = `<div id='calendar-scroll-wrap' style='max-height:700px;overflow-y:auto;position:relative;'>${calendarHtml}</div>`;
+                setTimeout(() => {
+                    const wrap = document.getElementById('calendar-scroll-wrap');
+                    if (wrap && firstAvailRow !== null) {
+                        // Each row is about 48px + border spacing, scroll to first available
+                        wrap.scrollTop = Math.max(0, (firstAvailRow - 2) * 52);
+                    }
+                }, 0);
+
+                // --- Booking Management Modal (Business Owner) ---
+                // Modal HTML (hidden by default, append only once)
+                let bookingModal = document.getElementById('booking-modal');
+                if (!bookingModal) {
+                    bookingModal = document.createElement('div');
+                    bookingModal.id = 'booking-modal';
+                    bookingModal.style.display = 'none';
+                    bookingModal.style.position = 'fixed';
+                    bookingModal.style.top = '0';
+                    bookingModal.style.left = '0';
+                    bookingModal.style.width = '100vw';
+                    bookingModal.style.height = '100vh';
+                    bookingModal.style.background = 'rgba(0,0,0,0.18)';
+                    bookingModal.style.zIndex = '1003';
+                    bookingModal.style.alignItems = 'center';
+                    bookingModal.style.justifyContent = 'center';
+                    bookingModal.innerHTML = `
+                        <div id="booking-modal-content" style="background:#fff;padding:32px 28px;border-radius:14px;box-shadow:0 4px 24px rgba(0,0,0,0.09);max-width:420px;width:100%;margin:auto;min-height:120px;display:flex;flex-direction:column;gap:18px;">
+                            <div id="booking-modal-details"></div>
+                            <div id="booking-modal-error" style="color:#c62828;display:none;font-size:0.98em;"></div>
+                            <div style="display:flex;gap:16px;justify-content:flex-end;">
+                                <button id="booking-modal-cancel-btn" style="padding:10px 18px;border-radius:7px;background:#e53935;color:#fff;font-weight:600;border:none;cursor:pointer;">Cancel Booking</button>
+                                <button id="booking-modal-close-btn" style="padding:10px 18px;border-radius:7px;background:#f3f4f6;color:#4f46e5;font-weight:600;border:none;cursor:pointer;">Close</button>
+                            </div>
+                        </div>
+                    `;
+                    document.body.appendChild(bookingModal);
+                }
+
+                // Click handlers for booking tiles and available slots (attach after DOM insertion)
+                setTimeout(() => {
+                    // Booking tile click: show manage modal
+                    document.querySelectorAll('.booking-tile').forEach(tile => {
+                        tile.onclick = () => {
+                            const day = parseInt(tile.getAttribute('data-day'));
+                            const hour = parseInt(tile.getAttribute('data-hour'));
+                            const booking = bookings.find(b => b.day === day && b.hour === hour);
+                            if (!booking) return;
+                            document.getElementById('booking-modal-details').innerHTML = `
+                                <div style='font-size:1.1em;font-weight:600;margin-bottom:6px;'>${booking.service}</div>
+                                <div><span style='color:#4f46e5;font-weight:500;'>Client:</span> ${booking.client}</div>
+                                <div><span style='color:#4f46e5;font-weight:500;'>Day:</span> ${days[day]}</div>
+                                <div><span style='color:#4f46e5;font-weight:500;'>Time:</span> ${hour}:00</div>
+                            `;
+                            document.getElementById('booking-modal-error').style.display = 'none';
+                            bookingModal.style.display = 'flex';
+                            document.getElementById('booking-modal-cancel-btn').onclick = async () => {
+                                document.getElementById('booking-modal-error').textContent = 'Cancel booking logic not yet implemented.';
+                                document.getElementById('booking-modal-error').style.display = 'block';
+                            };
+                            document.getElementById('booking-modal-close-btn').onclick = () => {
+                                bookingModal.style.display = 'none';
+                            };
+                        };
+                    });
+
+                    // Available slot click: show add modal if no booking
+                    document.querySelectorAll('#booking-calendar td.modern-available').forEach(cell => {
+                        // Only attach if no booking-tile inside
+                        if (!cell.querySelector('.booking-tile')) {
+                            cell.style.cursor = 'pointer';
+                            cell.onclick = () => {
+                                // Find day/hour from cell position
+                                const row = cell.parentElement;
+                                const tbody = row.parentElement;
+                                const hour = Array.from(tbody.children).indexOf(row);
+                                const day = Array.from(row.children).indexOf(cell) - 1; // -1 for hour label
+                                // Show add booking modal
+                                showAddBookingModal(day, hour);
+                            };
+                        }
+                    });
+                }, 0);
+
+                // Add Booking Modal (only one instance, with dropdowns)
+                let addBookingModal = document.getElementById('add-booking-modal');
+                if (!addBookingModal) {
+                    addBookingModal = document.createElement('div');
+                    addBookingModal.id = 'add-booking-modal';
+                    addBookingModal.style.display = 'none';
+                    addBookingModal.style.position = 'fixed';
+                    addBookingModal.style.top = '0';
+                    addBookingModal.style.left = '0';
+                    addBookingModal.style.width = '100vw';
+                    addBookingModal.style.height = '100vh';
+                    addBookingModal.style.background = 'rgba(0,0,0,0.18)';
+                    addBookingModal.style.zIndex = '1004';
+                    addBookingModal.style.alignItems = 'center';
+                    addBookingModal.style.justifyContent = 'center';
+                    addBookingModal.innerHTML = `
+                        <div id="add-booking-modal-content" style="background:#fff;padding:32px 28px;border-radius:14px;box-shadow:0 4px 24px rgba(0,0,0,0.09);max-width:420px;width:100%;margin:auto;min-height:120px;display:flex;flex-direction:column;gap:18px;">
+                            <div id="add-booking-modal-details"></div>
+                            <div id="add-booking-modal-error" style="color:#c62828;display:none;font-size:0.98em;"></div>
+                            <form id="add-booking-form" style="display:flex;flex-direction:column;gap:12px;">
+                                <select id="add-booking-client" required style="padding:10px 12px;border-radius:7px;border:1px solid #e5e7eb;"></select>
+                                <select id="add-booking-service" required style="padding:10px 12px;border-radius:7px;border:1px solid #e5e7eb;"></select>
+                                <div style="display:flex;gap:16px;justify-content:flex-end;margin-top:8px;">
+                                    <button type="submit" style="padding:10px 18px;border-radius:7px;background:#4f46e5;color:#fff;font-weight:600;border:none;cursor:pointer;">Add Booking</button>
+                                    <button type="button" id="add-booking-modal-close-btn" style="padding:10px 18px;border-radius:7px;background:#f3f4f6;color:#4f46e5;font-weight:600;border:none;cursor:pointer;">Cancel</button>
+                                </div>
+                            </form>
+                        </div>
+                    `;
+                    document.body.appendChild(addBookingModal);
+                }
+
+                // New Client Modal (only one instance)
+                let newClientModal = document.getElementById('new-client-modal');
+                if (!newClientModal) {
+                    newClientModal = document.createElement('div');
+                    newClientModal.id = 'new-client-modal';
+                    newClientModal.style.display = 'none';
+                    newClientModal.style.position = 'fixed';
+                    newClientModal.style.top = '0';
+                    newClientModal.style.left = '0';
+                    newClientModal.style.width = '100vw';
+                    newClientModal.style.height = '100vh';
+                    newClientModal.style.background = 'rgba(0,0,0,0.18)';
+                    newClientModal.style.zIndex = '1005';
+                    newClientModal.style.alignItems = 'center';
+                    newClientModal.style.justifyContent = 'center';
+                    newClientModal.innerHTML = `
+                        <div id="new-client-modal-content" style="background:#fff;padding:32px 28px;border-radius:14px;box-shadow:0 4px 24px rgba(0,0,0,0.09);max-width:420px;width:100%;margin:auto;min-height:120px;display:flex;flex-direction:column;gap:18px;">
+                            <div style='font-size:1.1em;font-weight:600;margin-bottom:6px;'>Add New Client</div>
+                            <div id="new-client-modal-error" style="color:#c62828;display:none;font-size:0.98em;"></div>
+                            <form id="new-client-form" style="display:flex;flex-direction:column;gap:12px;">
+                                <input id="new-client-name" type="text" placeholder="Name" required style="padding:10px 12px;border-radius:7px;border:1px solid #e5e7eb;" />
+                                <input id="new-client-email" type="email" placeholder="Email" required style="padding:10px 12px;border-radius:7px;border:1px solid #e5e7eb;" />
+                                <input id="new-client-phone" type="tel" placeholder="Phone" required style="padding:10px 12px;border-radius:7px;border:1px solid #e5e7eb;" />
+                                <input id="new-client-address" type="text" placeholder="Address" style="padding:10px 12px;border-radius:7px;border:1px solid #e5e7eb;" />
+                                <textarea id="new-client-notes" placeholder="Notes" style="padding:10px 12px;border-radius:7px;border:1px solid #e5e7eb;min-height:60px;"></textarea>
+                                <div style="display:flex;gap:16px;justify-content:flex-end;margin-top:8px;">
+                                    <button type="submit" style="padding:10px 18px;border-radius:7px;background:#4f46e5;color:#fff;font-weight:600;border:none;cursor:pointer;">Add Client</button>
+                                    <button type="button" id="new-client-modal-close-btn" style="padding:10px 18px;border-radius:7px;background:#f3f4f6;color:#4f46e5;font-weight:600;border:none;cursor:pointer;">Cancel</button>
+                                </div>
+                            </form>
+                        </div>
+                    `;
+                    document.body.appendChild(newClientModal);
+                }
+
+                // Show Add Booking Modal function (with dropdowns)
+                async function showAddBookingModal(day, hour) {
+                    document.getElementById('add-booking-modal-details').innerHTML = `
+                        <div style='font-size:1.1em;font-weight:600;margin-bottom:6px;'>Add Booking</div>
+                        <div><span style='color:#4f46e5;font-weight:500;'>Day:</span> ${days[day]}</div>
+                        <div><span style='color:#4f46e5;font-weight:500;'>Time:</span> ${hour}:00</div>
+                    `;
+                    document.getElementById('add-booking-modal-error').style.display = 'none';
+                    addBookingModal.style.display = 'flex';
+
+                    // Fetch clients from Firestore
+                    let clientOptions = [];
+                    try {
+                        const clientsSnap = await getDocs(collection(db, 'companies', companyId, 'clients'));
+                        clientsSnap.forEach(docSnap => {
+                            const data = docSnap.data();
+                            clientOptions.push({ id: docSnap.id, name: data.name });
+                        });
+                    } catch (err) {
+                        // fallback: no clients
+                    }
+                    // Populate client dropdown
+                    const clientSelect = document.getElementById('add-booking-client');
+                    clientSelect.innerHTML = clientOptions.map(c => `<option value="${c.id}">${c.name}</option>`).join('') + '<option value="__new__">+ New Client</option>';
+                    clientSelect.value = clientOptions.length ? clientOptions[0].id : '__new__';
+
+                    // Fetch services from Firestore
+                    let serviceOptions = Array.isArray(services) ? services : [];
+                    const serviceSelect = document.getElementById('add-booking-service');
+                    serviceSelect.innerHTML = serviceOptions.map(s => `<option value="${s.name}">${s.name}</option>`).join('');
+                    serviceSelect.value = serviceOptions.length ? serviceOptions[0].name : '';
+
+                    // Show new client modal if selected
+                    clientSelect.onchange = () => {
+                        if (clientSelect.value === '__new__') {
+                            addBookingModal.style.display = 'none';
+                            showNewClientModal(async (newClientId, newClientName) => {
+                                // After adding, re-show booking modal and select new client
+                                await showAddBookingModal(day, hour);
+                                document.getElementById('add-booking-client').value = newClientId;
+                            });
+                        }
+                    };
+
+                    // Close handler
+                    document.getElementById('add-booking-modal-close-btn').onclick = () => {
+                        addBookingModal.style.display = 'none';
+                    };
+                    // Form submit handler
+                    document.getElementById('add-booking-form').onsubmit = async (e) => {
+                        e.preventDefault();
+                        const clientId = clientSelect.value;
+                        const service = serviceSelect.value;
+                        const errorBox = document.getElementById('add-booking-modal-error');
+                        errorBox.style.display = 'none';
+                        if (!clientId || !service) {
+                            errorBox.textContent = 'Client and service are required.';
+                            errorBox.style.display = 'block';
+                            return;
+                        }
+                        // Get client name for display
+                        let clientName = '';
+                        if (clientId === '__new__') {
+                            errorBox.textContent = 'Please add/select a client.';
+                            errorBox.style.display = 'block';
+                            return;
+                        } else {
+                            const c = clientOptions.find(c => c.id === clientId);
+                            clientName = c ? c.name : '';
+                        }
+                        // Demo: add to local array and re-render
+                        bookings.push({ day, hour, client: clientName, service });
+                        addBookingModal.style.display = 'none';
+                        renderDashboard();
+                    };
+                }
+
+                // Show New Client Modal function
+                function showNewClientModal(onAdded) {
+                    document.getElementById('new-client-modal-error').style.display = 'none';
+                    newClientModal.style.display = 'flex';
+                    document.getElementById('new-client-name').value = '';
+                    document.getElementById('new-client-email').value = '';
+                    document.getElementById('new-client-phone').value = '';
+                    document.getElementById('new-client-address').value = '';
+                    document.getElementById('new-client-notes').value = '';
+                    document.getElementById('new-client-modal-close-btn').onclick = () => {
+                        newClientModal.style.display = 'none';
+                    };
+                    document.getElementById('new-client-form').onsubmit = async (e) => {
+                        e.preventDefault();
+                        const name = document.getElementById('new-client-name').value.trim();
+                        const email = document.getElementById('new-client-email').value.trim();
+                        const phone = document.getElementById('new-client-phone').value.trim();
+                        const address = document.getElementById('new-client-address').value.trim();
+                        const notes = document.getElementById('new-client-notes').value.trim();
+                        const errorBox = document.getElementById('new-client-modal-error');
+                        errorBox.style.display = 'none';
+                        if (!name || !email || !phone) {
+                            errorBox.textContent = 'Name, email, and phone are required.';
+                            errorBox.style.display = 'block';
+                            return;
+                        }
+                        try {
+                            // Add to Firestore
+                            const docRef = await addDoc(collection(db, 'companies', companyId, 'clients'), {
+                                name, email, phone, address, notes, createdAt: new Date().toISOString()
+                            });
+                            newClientModal.style.display = 'none';
+                            if (onAdded) onAdded(docRef.id, name);
+                        } catch (err) {
+                            errorBox.textContent = err.message.replace('Firebase: ', '');
+                            errorBox.style.display = 'block';
+                        }
+                    };
+                }
+
+                // Modern calendar cell styles (minimal, modern look)
+                const styleId = 'modern-booking-calendar-style';
+                let styleTag = document.getElementById(styleId);
+                if (!styleTag) {
+                    styleTag = document.createElement('style');
+                    styleTag.id = styleId;
+                    document.head.appendChild(styleTag);
+                }
+                styleTag.textContent = `
+                    #calendar-scroll-wrap thead th {
+                        position: sticky;
+                        top: 0;
+                        z-index: 2;
+                        background: #f3f4f6;
+                    }
+                    #calendar-scroll-wrap thead th:first-child {
+                        background: #fff;
+                        z-index: 3;
+                    }
+                    #booking-calendar table {
+                        border-collapse: separate !important;
+                        border-spacing: 8px 4px !important;
+                        background: none;
+                    }
+                    #booking-calendar th, #booking-calendar td {
+                        border: none !important;
+                        box-shadow: none !important;
+                    }
+                    #booking-calendar td.modern-available {
+                        background: #e3f0ff; /* Soft pastel blue */
+                        color: #2563eb;
+                        border-radius: 11px;
+                        box-shadow: 0 4px 18px 0 rgba(51, 132, 255, 0.10), 0 1.5px 4px 0 rgba(51, 132, 255, 0.07);
+                        opacity: 1;
+                        transition: box-shadow 0.18s, background 0.18s;
+                        cursor: pointer;
+                        position: relative;
+                        height: 64px !important;
+                        min-height: 64px !important;
+                    }
+                    #booking-calendar td.modern-available:hover {
+                        box-shadow: 0 8px 32px 0 rgba(51, 132, 255, 0.16), 0 2px 8px 0 rgba(51, 132, 255, 0.10);
+                        background: #d6eaff;
+                    }
+                    #booking-calendar td.modern-unavailable {
+                        background: #f6f7fa;
+                        color: #b0b0b0;
+                        border-radius: 11px;
+                        opacity: 0.55;
+                        cursor: not-allowed;
+                        position: relative;
+                        height: 64px !important;
+                        min-height: 64px !important;
+                    }
+                    #booking-calendar tr td:first-child {
+                        background: none !important;
+                        color: #888;
+                        font-size: 0.98em;
+                        border-radius: 0;
+                        opacity: 1;
+                    }
+                    #calendar-scroll-wrap {
+                        scrollbar-width: thin;
+                        scrollbar-color: #bcd6f6 #f3f4f6;
+                    }
+                    #calendar-scroll-wrap::-webkit-scrollbar {
+                        width: 8px;
+                        background: #f3f4f6;
+                    }
+                    #calendar-scroll-wrap::-webkit-scrollbar-thumb {
+                        background: #bcd6f6;
+                        border-radius: 8px;
+                    }
+                `;
+
                 addSpaLinkHandlers();
                 return;
             }
@@ -707,6 +1116,7 @@
                             </div>
                         </header>
                         <section class="content">
+                            <!-- Company Summary -->
                             <div id="dashboard-earnings" class="cards" style="margin-bottom:32px;"></div>
                             <div style="margin-bottom:24px;">
                                 <label for="company-filter" style="font-weight:600;">Show companies by:</label>
@@ -716,6 +1126,15 @@
                                 </select>
                             </div>
                             <div id="dashboard-companies" class="cards"></div>
+
+                            <!-- Bookings Calendar -->
+                            <div id="booking-calendar-section" style="margin-bottom:32px;"></div>
+
+                            <!-- Services -->
+                            <div id="services-section" style="margin-bottom:32px;"></div>
+
+                            <!-- Clients -->
+                            <div id="clients-section"></div>
                         </section>
                     </main>
                 </div>
@@ -1028,6 +1447,26 @@
                         <button id="reset-password-btn" style="margin-top:28px;padding:12px 0;border-radius:7px;background:#f8fafc;color:#4f46e5;font-size:1.08em;font-weight:600;border:1px solid #e5e7eb;cursor:pointer;width:100%;">Reset Password</button>
                         <div id="reset-password-msg" style="display:none;margin-top:18px;font-size:1em;"></div>
                     </div>
+
+                    <!-- Weekly Availability Card (Business Owner Only) -->
+                    ${(currentRole === 'owner') ? `<div class="card" style="padding:32px 28px;max-width:100%;margin:40px 0;">
+                        <h2 style="margin-bottom:18px;font-size:1.2em;font-weight:700;color:#222;">Weekly Availability</h2>
+                        <form id="availability-form" style="background:#fff;padding:0;border-radius:12px;">
+                            <table style="width:100%;border-collapse:separate;border-spacing:0 8px;">
+                                <thead>
+                                    <tr>
+                                        <th style="text-align:left;padding:8px 4px;">Day</th>
+                                        <th style="text-align:center;padding:8px 4px;">Available</th>
+                                        <th style="text-align:center;padding:8px 4px;">Start</th>
+                                        <th style="text-align:center;padding:8px 4px;">End</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="availability-table-body"></tbody>
+                            </table>
+                            <div id="availability-error" style="color:#c62828;display:none;font-size:0.98em;margin-top:10px;"></div>
+                            <button type="submit" style="margin-top:18px;padding:10px 28px;border-radius:7px;background:#4f46e5;color:#fff;font-weight:600;border:none;cursor:pointer;">Save Availability</button>
+                        </form>
+                    </div>` : ''}
                 </section>
             </main>
         </div>
@@ -1047,6 +1486,82 @@
                     msg.style.color = "red";
                 }
             };
+
+            // --- Availability Logic (Business Owner Only) ---
+            if (currentRole === 'owner') {
+                // Fetch company info
+                let companyDoc = null;
+                let companyId = null;
+                const companiesRef = collection(db, "companies");
+                const q = query(companiesRef, where('ownerUid', '==', currentUser.uid));
+                const querySnapshot = await getDocs(q);
+                if (!querySnapshot.empty) {
+                    companyDoc = querySnapshot.docs[0].data();
+                    companyId = querySnapshot.docs[0].id;
+                }
+                // Default availability
+                const defaultAvailability = [
+                    { day: 'Sunday', enabled: false, start: '09:00', end: '17:00' },
+                    { day: 'Monday', enabled: true, start: '09:00', end: '17:00' },
+                    { day: 'Tuesday', enabled: true, start: '09:00', end: '17:00' },
+                    { day: 'Wednesday', enabled: true, start: '09:00', end: '17:00' },
+                    { day: 'Thursday', enabled: true, start: '09:00', end: '17:00' },
+                    { day: 'Friday', enabled: true, start: '09:00', end: '17:00' },
+                    { day: 'Saturday', enabled: false, start: '09:00', end: '17:00' },
+                ];
+                let availability = (companyDoc && companyDoc.availability) ? companyDoc.availability : defaultAvailability;
+                // Render table rows
+                const tbody = document.getElementById('availability-table-body');
+                tbody.innerHTML = availability.map((a, i) => `
+                    <tr>
+                        <td style="padding:8px 4px;font-weight:600;">${a.day.slice(0, 3)}</td>
+                        <td style="text-align:center;">
+                            <input type="checkbox" id="avail-enabled-${i}" ${a.enabled ? 'checked' : ''} />
+                        </td>
+                        <td style="text-align:center;">
+                            <input type="time" id="avail-start-${i}" value="${a.start}" ${a.enabled ? '' : 'disabled'} style="padding:4px 8px;border-radius:6px;border:1px solid #e5e7eb;" />
+                        </td>
+                        <td style="text-align:center;">
+                            <input type="time" id="avail-end-${i}" value="${a.end}" ${a.enabled ? '' : 'disabled'} style="padding:4px 8px;border-radius:6px;border:1px solid #e5e7eb;" />
+                        </td>
+                    </tr>
+                `).join('');
+                // Enable/disable time inputs based on checkbox
+                for (let i = 0; i < 7; i++) {
+                    document.getElementById(`avail-enabled-${i}`).onchange = (e) => {
+                        document.getElementById(`avail-start-${i}`).disabled = !e.target.checked;
+                        document.getElementById(`avail-end-${i}`).disabled = !e.target.checked;
+                    };
+                }
+                // Save handler
+                document.getElementById('availability-form').onsubmit = async (e) => {
+                    e.preventDefault();
+                    let newAvailability = [];
+                    for (let i = 0; i < 7; i++) {
+                        const enabled = document.getElementById(`avail-enabled-${i}`).checked;
+                        const start = document.getElementById(`avail-start-${i}`).value;
+                        const end = document.getElementById(`avail-end-${i}`).value;
+                        newAvailability.push({ day: defaultAvailability[i].day, enabled, start, end });
+                    }
+                    // Validate: start < end for enabled days
+                    for (let i = 0; i < 7; i++) {
+                        if (newAvailability[i].enabled && newAvailability[i].start >= newAvailability[i].end) {
+                            const errBox = document.getElementById('availability-error');
+                            errBox.textContent = `Start time must be before end time for ${newAvailability[i].day}.`;
+                            errBox.style.display = 'block';
+                            return;
+                        }
+                    }
+                    try {
+                        await updateDoc(doc(db, 'companies', companyId), { availability: newAvailability });
+                        document.getElementById('availability-error').style.display = 'none';
+                    } catch (err) {
+                        const errBox = document.getElementById('availability-error');
+                        errBox.textContent = err.message.replace('Firebase: ', '');
+                        errBox.style.display = 'block';
+                    }
+                };
+            }
             addSpaLinkHandlers();
         }
 
