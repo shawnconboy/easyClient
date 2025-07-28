@@ -14,7 +14,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
         import { getAuth, onAuthStateChanged, signOut, sendPasswordResetEmail, signInWithEmailAndPassword, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
-        import { getFirestore, doc, getDoc, collection, getDocs, query, where, addDoc, updateDoc, setDoc } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+        import { getFirestore, doc, getDoc, collection, getDocs, query, where, addDoc, updateDoc, setDoc, deleteDoc, orderBy, limit } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
         // Firebase config
         const firebaseConfig = {
@@ -28,6 +28,66 @@
         };
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
+
+        // Utility functions
+        function generateId() {
+            return Date.now().toString(36) + Math.random().toString(36).substr(2);
+        }
+
+        function formatDate(dateStr) {
+            return new Date(dateStr).toLocaleDateString();
+        }
+
+        function formatTime(timeStr) {
+            return timeStr;
+        }
+
+        // Convert 24-hour time to 12-hour AM/PM format
+        function formatTime12Hour(hour) {
+            if (hour === 0) return '12:00 AM';
+            if (hour < 12) return `${hour}:00 AM`;
+            if (hour === 12) return '12:00 PM';
+            return `${hour - 12}:00 PM`;
+        }
+
+        // Convert time string (like "14:30") to 12-hour format
+        function formatTimeString12Hour(timeStr) {
+            if (!timeStr) return '';
+            const [hours, minutes] = timeStr.split(':');
+            const hour = parseInt(hours);
+            const min = minutes || '00';
+
+            if (hour === 0) return `12:${min} AM`;
+            if (hour < 12) return `${hour}:${min} AM`;
+            if (hour === 12) return `12:${min} PM`;
+            return `${hour - 12}:${min} PM`;
+        }
+
+        // Authorization helper
+        function hasPermission(action, companyId = null) {
+            if (!currentUser || !currentRole) return false;
+
+            switch (action) {
+                case 'view_all_companies':
+                case 'create_company':
+                case 'view_all_users':
+                    return currentRole === 'admin';
+
+                case 'manage_company':
+                case 'view_company_data':
+                case 'manage_bookings':
+                case 'manage_clients':
+                    if (currentRole === 'admin') return true;
+                    if (currentRole === 'owner' && companyId === currentUser.uid) return true;
+                    return false;
+
+                case 'view_own_bookings':
+                    return currentRole === 'client' || currentRole === 'owner' || currentRole === 'admin';
+
+                default:
+                    return false;
+            }
+        }
         const auth = getAuth(app);
 
         // SPA root
@@ -46,6 +106,7 @@
         // Auth state and role
         let currentUser = null;
         let currentRole = null;
+        let currentWeekOffset = 0; // 0 = current week, -1 = previous week, 1 = next week
 
         // Sidebar rendering
         function renderSidebar() {
@@ -257,7 +318,16 @@
                     try {
                         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
                         const user = userCredential.user;
-                        const userData = { name, email, phone, role: 'owner', business, createdAt: new Date().toISOString() };
+                        const userData = {
+                            name,
+                            email,
+                            phone,
+                            role: 'owner',
+                            business,
+                            companyId: user.uid,
+                            status: 'active',
+                            createdAt: new Date().toISOString()
+                        };
                         await setDoc(doc(db, 'users', user.uid), userData);
                         await setDoc(doc(db, 'companies', user.uid), {
                             name: business,
@@ -265,6 +335,17 @@
                             ownerEmail: email,
                             ownerName: name,
                             ownerPhone: phone,
+                            services: [],
+                            settings: {
+                                timezone: 'America/New_York',
+                                bookingWindow: 30,
+                                cancellationPolicy: '24 hours notice required',
+                                notifications: {
+                                    emailEnabled: true,
+                                    smsEnabled: false
+                                }
+                            },
+                            totalRevenue: 0,
                             createdAt: new Date().toISOString()
                         });
                         document.getElementById('signup-form-modal').style.display = 'none';
@@ -364,8 +445,18 @@
                 try {
                     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
                     const user = userCredential.user;
-                    const userData = { name, email, phone, role, createdAt: new Date().toISOString() };
-                    if (role === 'owner') userData.business = business;
+                    const userData = {
+                        name,
+                        email,
+                        phone,
+                        role,
+                        status: 'active',
+                        createdAt: new Date().toISOString()
+                    };
+                    if (role === 'owner') {
+                        userData.business = business;
+                        userData.companyId = user.uid;
+                    }
                     await setDoc(doc(db, 'users', user.uid), userData);
                     if (role === 'owner') {
                         await setDoc(doc(db, 'companies', user.uid), {
@@ -374,6 +465,17 @@
                             ownerEmail: email,
                             ownerName: name,
                             ownerPhone: phone,
+                            services: [],
+                            settings: {
+                                timezone: 'America/New_York',
+                                bookingWindow: 30,
+                                cancellationPolicy: '24 hours notice required',
+                                notifications: {
+                                    emailEnabled: true,
+                                    smsEnabled: false
+                                }
+                            },
+                            totalRevenue: 0,
                             createdAt: new Date().toISOString()
                         });
                     }
@@ -418,6 +520,39 @@
             };
         }
 
+        // Week navigation functions
+        function changeWeek(direction) {
+            currentWeekOffset += direction;
+            renderDashboard(); // Re-render to update calendar
+        }
+
+        function getWeekStartDate() {
+            const today = new Date();
+            const startOfWeek = new Date(today);
+            startOfWeek.setDate(today.getDate() - today.getDay() + (currentWeekOffset * 7)); // Sunday
+            return startOfWeek;
+        }
+
+        function formatWeekDisplay() {
+            const startOfWeek = getWeekStartDate();
+            const endOfWeek = new Date(startOfWeek);
+            endOfWeek.setDate(startOfWeek.getDate() + 6);
+
+            const options = { month: 'short', day: 'numeric' };
+            const startStr = startOfWeek.toLocaleDateString('en-US', options);
+            const endStr = endOfWeek.toLocaleDateString('en-US', options);
+
+            if (currentWeekOffset === 0) {
+                return `This Week (${startStr} - ${endStr})`;
+            } else if (currentWeekOffset === -1) {
+                return `Last Week (${startStr} - ${endStr})`;
+            } else if (currentWeekOffset === 1) {
+                return `Next Week (${startStr} - ${endStr})`;
+            } else {
+                return `Week of ${startStr} - ${endStr}`;
+            }
+        }
+
         async function renderDashboard() {
             if (currentRole === 'owner') {
                 // Fetch owner's company
@@ -441,6 +576,44 @@
                     clientsSnap.forEach(docSnap => {
                         clients.push({ id: docSnap.id, ...docSnap.data() });
                     });
+                }
+
+                // Fetch real bookings from Firestore BEFORE rendering
+                let bookings = [];
+                if (companyId) {
+                    try {
+                        const bookingsSnapshot = await getDocs(collection(db, 'companies', companyId, 'bookings'));
+                        const startOfWeek = getWeekStartDate(); // Use the selected week
+
+                        bookingsSnapshot.forEach(docSnap => {
+                            const booking = docSnap.data();
+                            if (!booking.date || !booking.startTime) return; // Skip malformed bookings
+
+                            const bookingDate = new Date(booking.date);
+
+                            // Calculate day offset from start of selected week
+                            const dayDiff = Math.floor((bookingDate - startOfWeek) / (1000 * 60 * 60 * 24));
+
+                            if (dayDiff >= 0 && dayDiff < 7) {
+                                const hour = parseInt(booking.startTime.split(':')[0]);
+                                if (!isNaN(hour)) {
+                                    bookings.push({
+                                        id: docSnap.id,
+                                        day: dayDiff,
+                                        hour: hour,
+                                        client: booking.clientName || 'Unknown Client',
+                                        service: booking.serviceName || 'Unknown Service',
+                                        status: booking.status || 'scheduled',
+                                        ...booking
+                                    });
+                                }
+                            }
+                        });
+                    } catch (err) {
+                        console.error('Error fetching bookings:', err);
+                        // Fallback to demo booking for testing
+                        bookings = [];
+                    }
                 }
 
                 root.innerHTML = `
@@ -471,8 +644,34 @@
             </div>
             <!-- Booking Section -->
             <div class="card" style="padding:28px 24px;margin-bottom:28px;">
-                <h2 style="margin-bottom:16px;">Bookings</h2>
+                <h2 style="margin-bottom:16px;">Bookings Calendar</h2>
+                
+                <!-- Week Navigation -->
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;padding:12px 16px;background:#f8fafc;border-radius:8px;">
+                    <button onclick="changeWeek(-1)" style="padding:8px 16px;background:#4f46e5;color:white;border:none;border-radius:6px;cursor:pointer;font-weight:500;">← Previous Week</button>
+                    <div id="week-display" style="font-weight:600;color:#374151;font-size:1.1em;">Current Week</div>
+                    <button onclick="changeWeek(1)" style="padding:8px 16px;background:#4f46e5;color:white;border:none;border-radius:6px;cursor:pointer;font-weight:500;">Next Week →</button>
+                </div>
+                
                 <div id="booking-calendar" style="overflow-x:auto;"></div>
+            </div>
+            <!-- Recent Bookings Section -->
+            <div class="card" style="padding:28px 24px;margin-bottom:28px;">
+                <h2 style="margin-bottom:16px;">Recent Bookings</h2>
+                <div id="bookings-list">
+                    ${bookings.length === 0 ? '<p style="color:#888;">No bookings yet.</p>' : ''}
+                    ${bookings.slice(0, 5).map(booking => `
+                        <div style="background:#f8fafc;padding:16px;border-radius:8px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;">
+                            <div>
+                                <div style="font-weight:600;color:#222;">${booking.client}</div>
+                                <div style="color:#666;font-size:0.95em;">${booking.service} - ${formatDate(booking.date || new Date().toISOString())} at ${booking.startTime ? formatTimeString12Hour(booking.startTime) : formatTime12Hour(booking.hour)}</div>
+                            </div>
+                            <div>
+                                <span style="background:${booking.status === 'scheduled' ? '#e3f2fd' : booking.status === 'completed' ? '#e8f5e8' : '#ffebee'};color:${booking.status === 'scheduled' ? '#1976d2' : booking.status === 'completed' ? '#2e7d32' : '#d32f2f'};padding:4px 12px;border-radius:12px;font-size:0.85em;font-weight:500;">${booking.status || 'scheduled'}</span>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
             </div>
             <!-- Services Section -->
             <div class="card" style="padding:28px 24px;margin-bottom:28px;">
@@ -581,7 +780,7 @@
                                     <td style="padding:10px 8px;border-radius:6px 0 0 6px;">${client.name}</td>
                                     <td style="padding:10px 8px;">${client.email}</td>
                                     <td style="padding:10px 8px;">${formatPhone(client.phone)}</td>
-                                    <td style="padding:10px 8px;">${client.address || ''}</td>
+                                    <td style="padding:10px 8px;">${typeof client.address === 'object' ? client.address?.street || '' : client.address || ''}</td>
                                     <td style="padding:10px 8px;border-radius:0 6px 6px 0;">${client.notes || ''}</td>
                                 </tr>
                             `).join('')}
@@ -628,6 +827,11 @@
                     };
                 });
                 document.getElementById('add-service-btn').onclick = async () => {
+                    if (!hasPermission('manage_company', companyId)) {
+                        alert('You do not have permission to add services.');
+                        return;
+                    }
+
                     const name = document.getElementById('new-service-name').value.trim();
                     const price = document.getElementById('new-service-price').value.trim();
                     const errBox = document.getElementById('services-error');
@@ -637,7 +841,16 @@
                         errBox.style.display = 'block';
                         return;
                     }
-                    const updated = services.concat([{ name, price: Number(price) }]);
+
+                    const newService = {
+                        id: generateId(),
+                        name,
+                        price: Number(price),
+                        duration: 60, // Default 1 hour
+                        description: '',
+                        active: true
+                    };
+                    const updated = services.concat([newService]);
                     try {
                         await updateDoc(doc(db, "companies", companyId), { services: updated });
                         renderDashboard();
@@ -658,27 +871,44 @@
                 };
                 document.getElementById('add-client-form').onsubmit = async (e) => {
                     e.preventDefault();
+
+                    if (!hasPermission('manage_clients', companyId)) {
+                        alert('You do not have permission to add clients.');
+                        return;
+                    }
+
                     const name = document.getElementById('client-name').value.trim();
                     const email = document.getElementById('client-email').value.trim();
                     const phoneRaw = document.getElementById('client-phone').value.trim();
                     const phone = phoneRaw.replace(/\s+/g, '');
-                    const address = document.getElementById('client-address').value.trim();
+                    const addressStr = document.getElementById('client-address').value.trim();
                     const notes = document.getElementById('client-notes').value.trim();
                     const errorBox = document.getElementById('add-client-error');
                     errorBox.style.display = 'none';
+
                     if (!name || !email || !phone) {
                         errorBox.textContent = "Name, email, and phone are required.";
                         errorBox.style.display = 'block';
                         return;
                     }
+
                     try {
-                        // Store client in company's subcollection instead of general users
+                        // Parse address if provided
+                        let address = { street: '', city: '', state: '', zipCode: '' };
+                        if (addressStr) {
+                            address.street = addressStr; // Simple implementation - could be enhanced
+                        }
+
+                        // Store client in company's subcollection
                         await addDoc(collection(db, 'companies', companyId, 'clients'), {
                             name,
                             email,
                             phone,
                             address,
                             notes,
+                            status: 'active',
+                            totalBookings: 0,
+                            lastBooking: null,
                             createdAt: new Date().toISOString()
                         });
                         modal.style.display = 'none';
@@ -701,20 +931,29 @@
                     { day: 'Saturday', enabled: false, start: '09:00', end: '17:00' },
                 ];
 
-                // Fetch bookings for this company (for now, just show static demo tiles)
-                // In a real app, fetch from Firestore: collection(db, 'companies', companyId, 'bookings')
-                // Add a static booking for demo/testing purposes
-                let bookings = [
-                    { day: 1, hour: 10, client: 'Jane Doe', service: 'Haircut' }
-                ];
-
                 // Build calendar grid
                 const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+                const startOfWeek = getWeekStartDate();
+
+                // Update week display
+                const weekDisplayElement = document.getElementById('week-display');
+                if (weekDisplayElement) {
+                    weekDisplayElement.textContent = formatWeekDisplay();
+                }
+
                 let calendarHtml = '<table style="border-collapse:separate;width:100%;min-width:700px;">';
                 // Header row with sticky th
                 calendarHtml += '<thead><tr><th style="width:48px;position:sticky;top:0;z-index:3;background:#fff;"></th>';
                 for (let d = 0; d < 7; d++) {
-                    calendarHtml += `<th style="text-align:center;padding:6px 0;font-weight:700;color:#4f46e5;background:#f3f4f6;position:sticky;top:0;z-index:2;">${days[d]}</th>`;
+                    const currentDate = new Date(startOfWeek);
+                    currentDate.setDate(startOfWeek.getDate() + d);
+                    const dateStr = currentDate.getDate();
+                    const isToday = currentDate.toDateString() === new Date().toDateString();
+                    const todayStyle = isToday ? 'background:#4f46e5;color:white;' : 'background:#f3f4f6;color:#4f46e5;';
+                    calendarHtml += `<th style="text-align:center;padding:6px 0;font-weight:700;${todayStyle}position:sticky;top:0;z-index:2;">
+                        <div>${days[d]}</div>
+                        <div style="font-size:0.9em;font-weight:500;">${dateStr}</div>
+                    </th>`;
                 }
                 calendarHtml += '</tr></thead><tbody>';
                 let firstAvailRow = null;
@@ -722,7 +961,7 @@
                     let rowHasAvail = false;
                     let rowHtml = `<tr>`;
                     // Hour label
-                    rowHtml += `<td style="text-align:right;padding:2px 8px;color:#888;font-size:0.98em;background:#f3f4f6;">${h}:00</td>`;
+                    rowHtml += `<td style="text-align:right;padding:2px 8px;color:#888;font-size:0.98em;background:#f3f4f6;">${formatTime12Hour(h)}</td>`;
                     for (let d = 0; d < 7; d++) {
                         // Is this hour available?
                         const avail = availability[d];
@@ -745,7 +984,7 @@
                         }
                         rowHtml += `<td class="${cellClass}" style="${cellStyle}position:relative;">`;
                         if (booking) {
-                            rowHtml += `<div class="booking-tile" data-day="${d}" data-hour="${h}" style="position:absolute;top:2px;left:2px;right:2px;bottom:2px;background:#4f46e5;color:#fff;border-radius:7px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:1.08em;font-weight:600;box-shadow:0 2px 8px rgba(79,70,229,0.10);z-index:2;cursor:pointer;line-height:1.32;padding:0 6px;min-height:56px;">
+                            rowHtml += `<div class="booking-tile" data-day="${d}" data-hour="${h}" style="position:absolute;top:2px;left:2px;right:2px;bottom:2px;background:#4f46e5;color:#fff;border-radius:7px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:1.08em;font-weight:600;box-shadow:0 2px 8px rgba(79,70,229,0.10);z-index:1;cursor:pointer;line-height:1.32;padding:0 6px;min-height:56px;">
                                 <span style='font-size:1em;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%;text-align:center;'>${booking.client}</span>
                                 <span style='font-size:0.97em;font-weight:400;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%;text-align:center;'>${booking.service}</span>
                             </div>`;
@@ -910,10 +1149,24 @@
 
                 // Show Add Booking Modal function (with dropdowns)
                 async function showAddBookingModal(day, hour) {
+                    // Store selected day and hour for form submission
+                    showAddBookingModal.selectedDay = day;
+                    showAddBookingModal.selectedHour = hour;
+
+                    const startOfWeek = getWeekStartDate();
+                    const selectedDate = new Date(startOfWeek);
+                    selectedDate.setDate(startOfWeek.getDate() + day);
+                    const dateStr = selectedDate.toLocaleDateString('en-US', {
+                        weekday: 'long',
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric'
+                    });
+
                     document.getElementById('add-booking-modal-details').innerHTML = `
                         <div style='font-size:1.1em;font-weight:600;margin-bottom:6px;'>Add Booking</div>
-                        <div><span style='color:#4f46e5;font-weight:500;'>Day:</span> ${days[day]}</div>
-                        <div><span style='color:#4f46e5;font-weight:500;'>Time:</span> ${hour}:00</div>
+                        <div><span style='color:#4f46e5;font-weight:500;'>Date:</span> ${dateStr}</div>
+                        <div><span style='color:#4f46e5;font-weight:500;'>Time:</span> ${formatTime12Hour(hour)}</div>
                     `;
                     document.getElementById('add-booking-modal-error').style.display = 'none';
                     addBookingModal.style.display = 'flex';
@@ -935,10 +1188,10 @@
                     clientSelect.value = clientOptions.length ? clientOptions[0].id : '__new__';
 
                     // Fetch services from Firestore
-                    let serviceOptions = Array.isArray(services) ? services : [];
+                    let serviceOptions = Array.isArray(services) ? services.filter(s => s.active !== false) : [];
                     const serviceSelect = document.getElementById('add-booking-service');
-                    serviceSelect.innerHTML = serviceOptions.map(s => `<option value="${s.name}">${s.name}</option>`).join('');
-                    serviceSelect.value = serviceOptions.length ? serviceOptions[0].name : '';
+                    serviceSelect.innerHTML = serviceOptions.map(s => `<option value="${s.id || s.name}">${s.name} - $${s.price}</option>`).join('');
+                    serviceSelect.value = serviceOptions.length ? (serviceOptions[0].id || serviceOptions[0].name) : '';
 
                     // Show new client modal if selected
                     clientSelect.onchange = () => {
@@ -959,29 +1212,82 @@
                     // Form submit handler
                     document.getElementById('add-booking-form').onsubmit = async (e) => {
                         e.preventDefault();
+
+                        if (!hasPermission('manage_bookings', companyId)) {
+                            alert('You do not have permission to create bookings.');
+                            return;
+                        }
+
                         const clientId = clientSelect.value;
-                        const service = serviceSelect.value;
+                        const serviceId = serviceSelect.value;
                         const errorBox = document.getElementById('add-booking-modal-error');
                         errorBox.style.display = 'none';
-                        if (!clientId || !service) {
+
+                        if (!clientId || !serviceId) {
                             errorBox.textContent = 'Client and service are required.';
                             errorBox.style.display = 'block';
                             return;
                         }
-                        // Get client name for display
-                        let clientName = '';
+
                         if (clientId === '__new__') {
                             errorBox.textContent = 'Please add/select a client.';
                             errorBox.style.display = 'block';
                             return;
-                        } else {
-                            const c = clientOptions.find(c => c.id === clientId);
-                            clientName = c ? c.name : '';
                         }
-                        // Demo: add to local array and re-render
-                        bookings.push({ day, hour, client: clientName, service });
-                        addBookingModal.style.display = 'none';
-                        renderDashboard();
+
+                        try {
+                            // Get client and service details
+                            const selectedClient = clientOptions.find(c => c.id === clientId);
+                            const selectedService = serviceOptions.find(s => s.id === serviceId);
+
+                            if (!selectedClient || !selectedService) {
+                                throw new Error('Invalid client or service selection');
+                            }
+
+                            // Calculate booking time using selected week
+                            const day = showAddBookingModal.selectedDay;
+                            const hour = showAddBookingModal.selectedHour;
+                            const startOfWeek = getWeekStartDate();
+                            const bookingDate = new Date(startOfWeek);
+                            bookingDate.setDate(startOfWeek.getDate() + day);
+
+                            const startTime = `${hour.toString().padStart(2, '0')}:00`;
+                            const endHour = hour + Math.floor(selectedService.duration / 60);
+                            const endMinutes = selectedService.duration % 60;
+                            const endTime = `${endHour.toString().padStart(2, '0')}:${endMinutes.toString().padStart(2, '0')}`;
+
+                            // Create booking document
+                            const bookingData = {
+                                clientId: clientId,
+                                clientName: selectedClient.name,
+                                serviceId: selectedService.id,
+                                serviceName: selectedService.name,
+                                date: bookingDate.toISOString().split('T')[0], // YYYY-MM-DD
+                                startTime: startTime,
+                                endTime: endTime,
+                                duration: selectedService.duration,
+                                status: 'scheduled',
+                                price: selectedService.price,
+                                notes: '',
+                                createdAt: new Date().toISOString(),
+                                updatedAt: new Date().toISOString()
+                            };
+
+                            // Save to Firestore
+                            await addDoc(collection(db, 'companies', companyId, 'bookings'), bookingData);
+
+                            // Update client's booking count
+                            await updateDoc(doc(db, 'companies', companyId, 'clients', clientId), {
+                                totalBookings: (selectedClient.totalBookings || 0) + 1,
+                                lastBooking: bookingData.date
+                            });
+
+                            addBookingModal.style.display = 'none';
+                            renderDashboard();
+                        } catch (err) {
+                            errorBox.textContent = err.message.replace('Firebase: ', '');
+                            errorBox.style.display = 'block';
+                        }
                     };
                 }
 
@@ -999,22 +1305,44 @@
                     };
                     document.getElementById('new-client-form').onsubmit = async (e) => {
                         e.preventDefault();
+
+                        if (!hasPermission('manage_clients', companyId)) {
+                            alert('You do not have permission to add clients.');
+                            return;
+                        }
+
                         const name = document.getElementById('new-client-name').value.trim();
                         const email = document.getElementById('new-client-email').value.trim();
                         const phone = document.getElementById('new-client-phone').value.trim();
-                        const address = document.getElementById('new-client-address').value.trim();
+                        const addressStr = document.getElementById('new-client-address').value.trim();
                         const notes = document.getElementById('new-client-notes').value.trim();
                         const errorBox = document.getElementById('new-client-modal-error');
                         errorBox.style.display = 'none';
+
                         if (!name || !email || !phone) {
                             errorBox.textContent = 'Name, email, and phone are required.';
                             errorBox.style.display = 'block';
                             return;
                         }
+
                         try {
+                            // Parse address if provided
+                            let address = { street: '', city: '', state: '', zipCode: '' };
+                            if (addressStr) {
+                                address.street = addressStr; // Simple implementation
+                            }
+
                             // Add to Firestore
                             const docRef = await addDoc(collection(db, 'companies', companyId, 'clients'), {
-                                name, email, phone, address, notes, createdAt: new Date().toISOString()
+                                name,
+                                email,
+                                phone,
+                                address,
+                                notes,
+                                status: 'active',
+                                totalBookings: 0,
+                                lastBooking: null,
+                                createdAt: new Date().toISOString()
                             });
                             newClientModal.style.display = 'none';
                             if (onAdded) onAdded(docRef.id, name);
@@ -1286,7 +1614,16 @@
                     try {
                         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
                         const user = userCredential.user;
-                        const userData = { name, email, phone, role: 'owner', business, createdAt: new Date().toISOString() };
+                        const userData = {
+                            name,
+                            email,
+                            phone,
+                            role: 'owner',
+                            business,
+                            companyId: user.uid,
+                            status: 'active',
+                            createdAt: new Date().toISOString()
+                        };
                         await setDoc(doc(db, 'users', user.uid), userData);
                         await setDoc(doc(db, 'companies', user.uid), {
                             name: business,
@@ -1294,6 +1631,17 @@
                             ownerEmail: email,
                             ownerName: name,
                             ownerPhone: phone,
+                            services: [],
+                            settings: {
+                                timezone: 'America/New_York',
+                                bookingWindow: 30,
+                                cancellationPolicy: '24 hours notice required',
+                                notifications: {
+                                    emailEnabled: true,
+                                    smsEnabled: false
+                                }
+                            },
+                            totalRevenue: 0,
                             createdAt: new Date().toISOString()
                         });
                         modal.style.display = 'none';
@@ -1689,28 +2037,44 @@
 
             document.getElementById('add-client-form').onsubmit = async (e) => {
                 e.preventDefault();
+
+                if (!hasPermission('manage_clients', companyId)) {
+                    alert('You do not have permission to add clients.');
+                    return;
+                }
+
                 const name = document.getElementById('client-name').value.trim();
                 const email = document.getElementById('client-email').value.trim();
                 const phoneRaw = document.getElementById('client-phone').value.trim();
                 const phone = phoneRaw.replace(/\s+/g, '');
-                const address = document.getElementById('client-address').value.trim();
+                const addressStr = document.getElementById('client-address').value.trim();
                 const notes = document.getElementById('client-notes').value.trim();
                 const errorBox = document.getElementById('add-client-error');
                 errorBox.style.display = 'none';
+
                 if (!name || !email || !phone) {
                     errorBox.textContent = "Name, email, and phone are required.";
                     errorBox.style.display = 'block';
                     return;
                 }
+
                 try {
-                    // Create client user document
-                    // Store client in company's subcollection instead of general users
+                    // Parse address if provided
+                    let address = { street: '', city: '', state: '', zipCode: '' };
+                    if (addressStr) {
+                        address.street = addressStr; // Simple implementation
+                    }
+
+                    // Store client in company's subcollection
                     const clientRef = await addDoc(collection(db, 'companies', companyId, 'clients'), {
                         name,
                         email,
                         phone,
                         address,
                         notes,
+                        status: 'active',
+                        totalBookings: 0,
+                        lastBooking: null,
                         createdAt: new Date().toISOString()
                     });
                     modal.style.display = 'none';
@@ -1891,6 +2255,11 @@
                 });
                 // Add service
                 document.getElementById('add-service-btn').onclick = async () => {
+                    if (!hasPermission('manage_company', companyId)) {
+                        alert('You do not have permission to add services.');
+                        return;
+                    }
+
                     const name = document.getElementById('new-service-name').value.trim();
                     const price = document.getElementById('new-service-price').value.trim();
                     const errBox = document.getElementById('services-error');
@@ -1900,7 +2269,16 @@
                         errBox.style.display = 'block';
                         return;
                     }
-                    const updated = services.concat([{ name, price: Number(price) }]);
+
+                    const newService = {
+                        id: generateId(),
+                        name,
+                        price: Number(price),
+                        duration: 60, // Default 1 hour
+                        description: '',
+                        active: true
+                    };
+                    const updated = services.concat([newService]);
                     try {
                         await updateDoc(doc(db, "companies", companyId), { services: updated });
                         renderCompanyDetail(companyId);

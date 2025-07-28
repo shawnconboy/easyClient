@@ -1,22 +1,91 @@
 Firestore Root
 ├── companies (collection)
-│   ├── {companyId} (document)
-│   │   ├── companyName: string
-│   │   ├── owner: string
-│   │   ├── ownerPhone: string
-│   │   ├── ownerEmail: string
-│   │   ├── revenue: number         // Total revenue for the company (sum of all sales, contracts, or invoices)
-│   │   └── services: array of objects
-│   │        ├── name: string
-│   │        └── price: number|string
+│   ├── {companyId} (document) // Uses owner's UID as document ID
+│   │   ├── name: string                    // Company name (e.g., "Art Lawn Care")
+│   │   ├── ownerUid: string               // Reference to owner's user document
+│   │   ├── ownerName: string              // Owner's full name
+│   │   ├── ownerEmail: string             // Owner's email address
+│   │   ├── ownerPhone: string             // Owner's phone number
+│   │   ├── createdAt: string              // ISO timestamp of creation
+│   │   ├── services: array of objects     // Enhanced service structure
+│   │   │   ├── id: string                // Unique service identifier
+│   │   │   ├── name: string              // Service name (e.g., "Mowing", "Edging")
+│   │   │   ├── price: number             // Service price
+│   │   │   ├── duration: number          // Duration in minutes (default: 60)
+│   │   │   ├── description: string       // Service description (optional)
+│   │   │   └── active: boolean           // Whether service is currently offered
+│   │   ├── availability: array of objects // Weekly availability schedule (optional)
+│   │   │   ├── day: string               // Day name (e.g., "Monday")
+│   │   │   ├── enabled: boolean          // Whether available on this day
+│   │   │   ├── start: string             // Start time (e.g., "09:00")
+│   │   │   └── end: string               // End time (e.g., "17:00")
+│   │   ├── settings: object              // Business configuration
+│   │   │   ├── timezone: string          // Business timezone (default: "America/New_York")
+│   │   │   ├── bookingWindow: number     // How far ahead clients can book (days, default: 30)
+│   │   │   ├── cancellationPolicy: string // Cancellation rules
+│   │   │   └── notifications: object     // Email/SMS preferences
+│   │   │       ├── emailEnabled: boolean
+│   │   │       └── smsEnabled: boolean
+│   │   ├── totalRevenue: number          // Total company revenue (calculated field)
+│   │   ├── clients (subcollection)
+│   │   │   ├── {clientId} (document)     // Auto-generated client document ID
+│   │   │   │   ├── name: string          // Client's full name
+│   │   │   │   ├── email: string         // Client's email
+│   │   │   │   ├── phone: string         // Client's phone number
+│   │   │   │   ├── address: object       // Structured address
+│   │   │   │   │   ├── street: string    // Street address
+│   │   │   │   │   ├── city: string      // City
+│   │   │   │   │   ├── state: string     // State/Province
+│   │   │   │   │   └── zipCode: string   // Postal code
+│   │   │   │   ├── notes: string         // Additional notes (optional)
+│   │   │   │   ├── status: string        // "active", "inactive" (default: "active")
+│   │   │   │   ├── totalBookings: number // Total booking count
+│   │   │   │   ├── lastBooking: string   // Last booking date (ISO string)
+│   │   │   │   └── createdAt: string     // ISO timestamp of creation
+│   │   │   └── ...
+│   │   ├── bookings (subcollection)
+│   │   │   ├── {bookingId} (document)    // Auto-generated booking document ID
+│   │   │   │   ├── clientId: string      // Reference to client document
+│   │   │   │   ├── clientName: string    // Client name (for quick access)
+│   │   │   │   ├── serviceId: string     // Service identifier
+│   │   │   │   ├── serviceName: string   // Service name (for quick access)
+│   │   │   │   ├── date: string          // Booking date (YYYY-MM-DD)
+│   │   │   │   ├── startTime: string     // Start time (HH:MM)
+│   │   │   │   ├── endTime: string       // End time (HH:MM)
+│   │   │   │   ├── duration: number      // Duration in minutes
+│   │   │   │   ├── status: string        // "scheduled", "completed", "cancelled", "no-show"
+│   │   │   │   ├── price: number         // Service price at time of booking
+│   │   │   │   ├── notes: string         // Special instructions (optional)
+│   │   │   │   ├── createdAt: string     // When booking was made
+│   │   │   │   └── updatedAt: string     // Last modification
+│   │   │   └── ...
+│   │   └── revenue (subcollection)
+│   │       ├── {revenueId} (document)    // Auto-generated revenue document ID
+│   │       │   ├── bookingId: string     // Reference to booking
+│   │       │   ├── amount: number        // Payment amount
+│   │       │   ├── date: string          // Payment date (YYYY-MM-DD)
+│   │       │   ├── method: string        // "cash", "card", "check", "online"
+│   │       │   ├── status: string        // "pending", "paid", "refunded"
+│   │       │   ├── notes: string         // Payment notes (optional)
+│   │       │   └── createdAt: string     // ISO timestamp of creation
+│   │       └── ...
 │   └── ...
 ├── users (collection)
-│   ├── {userId} (document)
-│   │   ├── name: string
-│   │   ├── email: string
-│   │   ├── role: string   // "admin", "owner", or "customer"
-│   │   └── ... (other user fields)
+│   ├── {userId} (document)               // Uses Firebase Auth UID
+│   │   ├── name: string                  // User's full name
+│   │   ├── email: string                 // User's email address
+│   │   ├── phone: string                 // User's phone number
+│   │   ├── role: string                  // "admin", "owner", or "client"
+│   │   ├── business: string              // Business name (for owners only)
+│   │   ├── companyId: string             // Reference to company (for owners)
+│   │   ├── status: string                // "active", "inactive" (default: "active")
+│   │   └── createdAt: string             // ISO timestamp of creation
 │   └── ...
-├── settings (collection or document)
-│   └── ... (global settings, if any)
-└── ... (other collections as needed)
+
+SECURITY RULES:
+- Users can only access their own user document
+- Owners can only access their own company data
+- Clients can only view their own bookings within a company
+- Admin can access all companies and users
+- All writes require authentication
+- Booking creation requires client to be associated with the company
