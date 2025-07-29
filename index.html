@@ -114,6 +114,7 @@
             if (currentRole === 'owner') {
                 links = [
                     { href: '/dashboard', label: 'Dashboard' },
+                    { href: '/bookings', label: 'Bookings' },
                     { href: '/clients', label: 'Clients' },
                     { href: '/settings', label: 'Settings' }
                 ];
@@ -147,6 +148,238 @@
         }
 
         // Views
+
+        // Bookings tab for business owners
+        async function renderBookings() {
+            if (currentRole !== 'owner') {
+                route('/dashboard');
+                return;
+            }
+            // Fetch owner's company
+            const companiesRef = collection(db, "companies");
+            const q = query(companiesRef, where('ownerUid', '==', currentUser.uid));
+            const querySnapshot = await getDocs(q);
+            let companyDoc = null;
+            let companyId = null;
+            if (!querySnapshot.empty) {
+                companyDoc = querySnapshot.docs[0].data();
+                companyId = querySnapshot.docs[0].id;
+            }
+            // Fetch bookings
+            let bookings = [];
+            if (companyId) {
+                try {
+                    const bookingsSnapshot = await getDocs(collection(db, 'companies', companyId, 'bookings'));
+                    bookingsSnapshot.forEach(docSnap => {
+                        bookings.push({ id: docSnap.id, ...docSnap.data() });
+                    });
+                } catch (err) {
+                    bookings = [];
+                }
+            }
+            // Calendar view (reuse dashboard logic)
+            let calendarHtml = '';
+            let weekDisplay = '';
+            let availability = Array.isArray(companyDoc?.availability) ? companyDoc.availability : [
+                { day: 'Sunday', enabled: false, start: '09:00', end: '17:00' },
+                { day: 'Monday', enabled: true, start: '09:00', end: '17:00' },
+                { day: 'Tuesday', enabled: true, start: '09:00', end: '17:00' },
+                { day: 'Wednesday', enabled: true, start: '09:00', end: '17:00' },
+                { day: 'Thursday', enabled: true, start: '09:00', end: '17:00' },
+                { day: 'Friday', enabled: true, start: '09:00', end: '17:00' },
+                { day: 'Saturday', enabled: false, start: '09:00', end: '17:00' },
+            ];
+            const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+            const startOfWeek = getWeekStartDate();
+            weekDisplay = formatWeekDisplay();
+            // Build calendar grid (same as dashboard)
+            calendarHtml += '<table style="border-collapse:separate;width:100%;min-width:700px;">';
+            calendarHtml += '<thead><tr><th style="width:48px;position:sticky;top:0;z-index:3;background:#fff;"></th>';
+            for (let d = 0; d < 7; d++) {
+                const currentDate = new Date(startOfWeek);
+                currentDate.setDate(startOfWeek.getDate() + d);
+                const dateStr = currentDate.getDate();
+                const isToday = currentDate.toDateString() === new Date().toDateString();
+                const todayStyle = isToday ? 'background:#4f46e5;color:white;' : 'background:#f3f4f6;color:#4f46e5;';
+                calendarHtml += `<th style="text-align:center;padding:6px 0;font-weight:700;${todayStyle}position:sticky;top:0;z-index:2;">
+                    <div>${days[d]}</div>
+                    <div style="font-size:0.9em;font-weight:500;">${dateStr}</div>
+                </th>`;
+            }
+            calendarHtml += '</tr></thead><tbody>';
+            for (let h = 0; h < 24; h++) {
+                let rowHtml = `<tr>`;
+                rowHtml += `<td style="text-align:right;padding:2px 8px;color:#888;font-size:0.98em;background:#f3f4f6;">${formatTime12Hour(h)}</td>`;
+                for (let d = 0; d < 7; d++) {
+                    const avail = availability[d];
+                    let isAvailable = false;
+                    if (avail.enabled) {
+                        const startH = parseInt(avail.start.split(':')[0], 10);
+                        const endH = parseInt(avail.end.split(':')[0], 10);
+                        isAvailable = h >= startH && h < endH;
+                    }
+                    // Find booking for this slot
+                    const currentDate = new Date(startOfWeek);
+                    currentDate.setDate(startOfWeek.getDate() + d);
+                    const dateISO = currentDate.toISOString().split('T')[0];
+                    const booking = bookings.find(b => b.date === dateISO && b.startTime && parseInt(b.startTime.split(':')[0]) === h);
+                    let cellStyle = `padding:0;height:64px;min-width:80px;`;
+                    let cellClass = '';
+                    if (isAvailable) {
+                        cellClass = 'modern-available';
+                    } else {
+                        cellClass = 'modern-unavailable';
+                    }
+                    rowHtml += `<td class="${cellClass}" style="${cellStyle}position:relative;">`;
+                    if (booking) {
+                        rowHtml += `<div class="booking-tile" data-id="${booking.id}" style="position:absolute;top:2px;left:2px;right:2px;bottom:2px;background:#4f46e5;color:#fff;border-radius:7px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:1.08em;font-weight:600;box-shadow:0 2px 8px rgba(79,70,229,0.10);z-index:1;cursor:pointer;line-height:1.32;padding:0 6px;min-height:56px;">${booking.client || ''}<br>${booking.service || ''}</div>`;
+                    }
+                    rowHtml += `</td>`;
+                }
+                rowHtml += `</tr>`;
+                calendarHtml += rowHtml;
+            }
+            calendarHtml += '</tbody></table>';
+
+            // Editable bookings list
+            let bookingsTable = `<table style="width:100%;margin-top:18px;border-collapse:separate;border-spacing:0 10px;">
+                <thead>
+                    <tr>
+                        <th>Client</th>
+                        <th>Service</th>
+                        <th>Date</th>
+                        <th>Time</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>`;
+            if (bookings.length === 0) {
+                bookingsTable += `<tr><td colspan="6" style="color:#888;">No bookings found.</td></tr>`;
+            } else {
+                bookings.forEach(b => {
+                    bookingsTable += `<tr data-id="${b.id}">
+                        <td>${b.client || ''}</td>
+                        <td>${b.service || ''}</td>
+                        <td>${formatDate(b.date || '')}</td>
+                        <td>${b.startTime ? formatTimeString12Hour(b.startTime) : ''}</td>
+                        <td>${b.status || ''}</td>
+                        <td>
+                            <button class="edit-booking-btn" data-id="${b.id}" style="margin-right:6px;">Edit</button>
+                            <button class="delete-booking-btn" data-id="${b.id}" style="color:#c62828;">Delete</button>
+                        </td>
+                    </tr>`;
+                });
+            }
+            bookingsTable += `</tbody></table>`;
+
+            root.innerHTML = `
+<div class="container">
+    ${renderSidebar()}
+    <main class="main">
+        <header class="topbar">
+            <h1>Bookings</h1>
+            <div class="user-box" id="user-box">
+                <button id="auth-btn">Sign Out</button>
+            </div>
+        </header>
+        <section class="content" id="bookings-content">
+            <div class="card" style="padding:28px 24px;margin-bottom:28px;">
+                <h2 style="margin-bottom:16px;">Bookings Calendar</h2>
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;padding:12px 16px;background:#f8fafc;border-radius:8px;">
+                    <button onclick="changeWeek(-1)" style="padding:8px 16px;background:#4f46e5;color:white;border:none;border-radius:6px;cursor:pointer;font-weight:500;">← Previous Week</button>
+                    <div id="week-display" style="font-weight:600;color:#374151;font-size:1.1em;">${weekDisplay}</div>
+                    <button onclick="changeWeek(1)" style="padding:8px 16px;background:#4f46e5;color:white;border:none;border-radius:6px;cursor:pointer;font-weight:500;">Next Week →</button>
+                </div>
+                <div id="booking-calendar" style="overflow-x:auto;">${calendarHtml}</div>
+            </div>
+            <div class="card" style="padding:28px 24px;">
+                <h2 style="margin-bottom:16px;">All Bookings</h2>
+                <div id="bookings-list">${bookingsTable}</div>
+            </div>
+        </section>
+    </main>
+</div>
+`;
+            document.getElementById('auth-btn').onclick = () => signOut(auth);
+            // Edit and delete handlers
+            document.querySelectorAll('.delete-booking-btn').forEach(btn => {
+                btn.onclick = async () => {
+                    const id = btn.getAttribute('data-id');
+                    if (confirm('Delete this booking?')) {
+                        await deleteDoc(doc(db, 'companies', companyId, 'bookings', id));
+                        renderBookings();
+                    }
+                };
+            });
+            document.querySelectorAll('.edit-booking-btn').forEach(btn => {
+                btn.onclick = async () => {
+                    const id = btn.getAttribute('data-id');
+                    const booking = bookings.find(b => b.id === id);
+                    if (!booking) return;
+                    // Simple inline edit modal
+                    const modal = document.createElement('div');
+                    modal.style.position = 'fixed';
+                    modal.style.top = '0';
+                    modal.style.left = '0';
+                    modal.style.width = '100vw';
+                    modal.style.height = '100vh';
+                    modal.style.background = 'rgba(0,0,0,0.18)';
+                    modal.style.zIndex = '1005';
+                    modal.style.display = 'flex';
+                    modal.style.alignItems = 'center';
+                    modal.style.justifyContent = 'center';
+                    modal.innerHTML = `
+                        <div style="background:#fff;padding:32px 28px;border-radius:14px;box-shadow:0 4px 24px rgba(0,0,0,0.09);max-width:420px;width:100%;margin:auto;">
+                            <h2 style="margin-bottom:18px;font-size:1.2em;font-weight:700;text-align:center;">Edit Booking</h2>
+                            <form id="edit-booking-form" style="display:flex;flex-direction:column;gap:14px;">
+                                <input type="text" id="edit-client" value="${booking.client || ''}" placeholder="Client Name" required />
+                                <input type="text" id="edit-service" value="${booking.service || ''}" placeholder="Service" required />
+                                <input type="date" id="edit-date" value="${booking.date || ''}" required />
+                                <input type="time" id="edit-time" value="${booking.startTime || ''}" required />
+                                <select id="edit-status">
+                                    <option value="scheduled" ${booking.status === 'scheduled' ? 'selected' : ''}>Scheduled</option>
+                                    <option value="completed" ${booking.status === 'completed' ? 'selected' : ''}>Completed</option>
+                                    <option value="cancelled" ${booking.status === 'cancelled' ? 'selected' : ''}>Cancelled</option>
+                                </select>
+                                <div id="edit-booking-error" style="color:#c62828;display:none;font-size:0.98em;"></div>
+                                <button type="submit" style="padding:12px 0;border-radius:7px;background:#4f46e5;color:#fff;font-size:1.08em;font-weight:600;border:none;cursor:pointer;">Save</button>
+                            </form>
+                            <button id="edit-booking-cancel" style="display:block;margin:0 auto;margin-top:10px;background:none;border:none;color:#888;font-size:1.1em;cursor:pointer;">Cancel</button>
+                        </div>
+                    `;
+                    document.body.appendChild(modal);
+                    document.getElementById('edit-booking-cancel').onclick = () => {
+                        document.body.removeChild(modal);
+                    };
+                    document.getElementById('edit-booking-form').onsubmit = async (e) => {
+                        e.preventDefault();
+                        const client = document.getElementById('edit-client').value.trim();
+                        const service = document.getElementById('edit-service').value.trim();
+                        const date = document.getElementById('edit-date').value;
+                        const startTime = document.getElementById('edit-time').value;
+                        const status = document.getElementById('edit-status').value;
+                        const errorBox = document.getElementById('edit-booking-error');
+                        errorBox.style.display = 'none';
+                        if (!client || !service || !date || !startTime) {
+                            errorBox.textContent = 'All fields are required.';
+                            errorBox.style.display = 'block';
+                            return;
+                        }
+                        try {
+                            await updateDoc(doc(db, 'companies', companyId, 'bookings', id), {
+                                client, service, date, startTime, status
+                            });
+                            document.body.removeChild(modal);
+                            renderBookings();
+                        } catch (err) {
+                            errorBox.textContent = err.message.replace('Firebase: ', '');
+                            errorBox.style.display = 'block';
+                        }
+                    };
+                };
+            });
+        }
         async function renderLanding() {
             root.innerHTML = `
         <section class="hero" style="padding:64px 0 48px 0;background:linear-gradient(90deg,#4f46e5 0%,#6366f1 100%);color:#fff;text-align:center;">
@@ -523,8 +756,14 @@
         // Week navigation functions
         function changeWeek(direction) {
             currentWeekOffset += direction;
-            renderDashboard(); // Re-render to update calendar
+            const path = window.location.pathname;
+            if (path === '/bookings') {
+                renderBookings();
+            } else {
+                renderDashboard();
+            }
         }
+        window.changeWeek = changeWeek;
 
         function getWeekStartDate() {
             const today = new Date();
@@ -2318,6 +2557,7 @@
                 if (path === '/settings') return renderSettings();
                 if (path === '/clients') return renderClients();
                 if (path === '/companies') return renderCompanies();
+                if (path === '/bookings') return renderBookings();
                 return renderDashboard();
             } else if (currentRole === 'admin') {
                 if (path === '/dashboard' || path === '/') return renderDashboard();
