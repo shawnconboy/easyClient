@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Debug Easy Client</title>
+    <link rel="stylesheet" href="style.css" />
+</head>
+
+<body>
+    <div id="spa-root"></div>
+    <script type="module">
+        console.log('Script starting...');
+
+        try {
+            console.log('Testing basic DOM manipulation...');
+            const root = document.getElementById('spa-root');
+            if (!root) {
+                console.error('spa-root element not found!');
+            } else {
+                console.log('spa-root element found');
+                root.innerHTML = '<div style="padding: 20px; background: lightgreen;">Debug: Basic DOM works!</div>';
+            }
+
+            console.log('Testing Firebase imports...');
+            const { initializeApp } = await import("https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js");
+            console.log('Firebase import successful');
+
+            console.log('Testing local file imports...');
+            const { ROLES } = await import('./js/constants.js');
+            console.log('Constants import successful:', ROLES);
+
+            const { showModal } = await import('./js/modal.js');
+            console.log('Modal import successful');
+
+            root.innerHTML = '<div style="padding: 20px; background: lightblue;">Debug: All imports successful!</div>';
+
+        } catch (error) {
+            console.error('Error during debug:', error);
+            const root = document.getElementById('spa-root');
+            if (root) {
+                root.innerHTML = `
+                    <div style="padding: 2rem; background: red; color: white;">
+                        <h2>Debug Error</h2>
+                        <p>${error.message}</p>
+                        <pre>${error.stack}</pre>
+                    </div>
+                `;
+            }
+        }
+    </script>
+</body>
+
+</html>
