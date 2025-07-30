@@ -22,7 +22,7 @@ export function renderLanding({ root }) {
             </div>
         </div>
         <div class="footer">
-            <p>&copy; 2024 Easy Client. All rights reserved.</p>
+            <p>&copy; 2025 Easy Client. All rights reserved.</p>
         </div>
     `;
 }
