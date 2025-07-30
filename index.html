@@ -26,6 +26,7 @@
         root.innerHTML = '<div style="padding: 20px; background: lightblue;">App is initializing...</div>';
 
         try {
+
             // Import Firebase modules
             const { initializeApp } = await import("https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js");
             const { getAuth, onAuthStateChanged, signOut, sendPasswordResetEmail, signInWithEmailAndPassword, createUserWithEmailAndPassword } = await import("https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js");
@@ -33,25 +34,27 @@
 
             console.log('Firebase imports successful');
 
-            // Import local modules
-            const { ROLES, ROUTES, BOOKING_STATUSES } = await import('./js/constants.js');
-            const { formatPhone, formatDate, formatTime, formatTime12Hour, formatTimeString12Hour, generateId, addSpaLinkHandlers } = await import('./js/utils.js');
-            const { showModal, closeModal } = await import('./js/modal.js');
-            const { renderSidebar } = await import('./js/sidebar.js');
-            const { getWeekStartDate, formatWeekDisplay } = await import('./js/week.js');
-            const { hasPermission } = await import('./js/auth.js');
-            const { renderDashboard } = await import('./js/views/dashboard.js');
-            const { renderCompanies } = await import('./js/views/companies.js');
-            const { renderClients } = await import('./js/views/clients.js');
-            const { renderCompanyDetail } = await import('./js/views/companyDetail.js');
-            const { renderUsers } = await import('./js/views/users.js');
-            const { renderSettings } = await import('./js/views/settings.js');
-            const { renderBookings } = await import('./js/views/bookings.js');
-            const { renderServices } = await import('./js/views/services.js');
-            const { renderLanding } = await import('./js/views/landing.js');
-            const { renderLogin } = await import('./js/views/login.js');
-            const { renderSignup } = await import('./js/views/signup.js');
-            const { renderReset } = await import('./js/views/reset.js');
+            // Import local modules (use absolute paths so public routes work)
+            const { ROLES, ROUTES, BOOKING_STATUSES } = await import('/js/constants.js');
+            const { formatPhone, formatDate, formatTime, formatTime12Hour, formatTimeString12Hour, generateId, addSpaLinkHandlers } = await import('/js/utils.js');
+            const { showModal, closeModal } = await import('/js/modal.js');
+            const { renderSidebar } = await import('/js/sidebar.js');
+            const { getWeekStartDate, formatWeekDisplay } = await import('/js/week.js');
+            const { hasPermission } = await import('/js/auth.js');
+            const { renderDashboard } = await import('/js/views/dashboard.js');
+            const { renderCompanies } = await import('/js/views/companies.js');
+            const { renderClients } = await import('/js/views/clients.js');
+            const { renderCompanyDetail } = await import('/js/views/companyDetail.js');
+            const { renderUsers } = await import('/js/views/users.js');
+            const { renderSettings } = await import('/js/views/settings.js');
+            const { renderBookings } = await import('/js/views/bookings.js');
+            const { renderServices } = await import('/js/views/services.js');
+            const { renderLanding } = await import('/js/views/landing.js');
+            const { renderLogin } = await import('/js/views/login.js');
+            const { renderSignup } = await import('/js/views/signup.js');
+            const { renderReset } = await import('/js/views/reset.js');
+            const { renderPublicBooking } = await import('/js/views/publicBooking.js');
+            const { renderClientDashboard } = await import('/js/views/clientDashboard.js');
 
             console.log('All imports completed');
 
@@ -66,7 +69,7 @@
             });
 
             // Import and make showConfirmModal available globally
-            const modalModule = await import('./js/modal.js');
+            const modalModule = await import('/js/modal.js');
             window.showConfirmModal = modalModule.showConfirmModal;
 
             // --- Firebase config ---
@@ -82,6 +85,10 @@
             const app = initializeApp(firebaseConfig);
             const db = getFirestore(app);
             const auth = getAuth(app);
+
+            // Make Firebase instances globally available
+            window.auth = auth;
+            window.db = db;
 
             console.log('Firebase initialized');
 
@@ -118,9 +125,23 @@
                 if (user) {
                     let role = null;
                     try {
+                        // First check if user has a role in users collection
                         const userDoc = await getDoc(doc(db, "users", user.uid));
-                        if (userDoc.exists()) role = userDoc.data().role;
-                    } catch { }
+                        if (userDoc.exists()) {
+                            role = userDoc.data().role;
+                        } else {
+                            // If no user document, check if they own a company
+                            const companiesRef = collection(db, 'companies');
+                            const companyQuery = query(companiesRef, where('ownerUid', '==', user.uid));
+                            const companySnapshot = await getDocs(companyQuery);
+
+                            if (!companySnapshot.empty) {
+                                role = ROLES.OWNER;
+                            }
+                        }
+                    } catch (error) {
+                        console.error('Error detecting user role:', error);
+                    }
                     currentRole = role;
                 } else {
                     currentRole = null;
@@ -133,6 +154,16 @@
                 console.log('renderView called with path:', path);
                 console.log('currentUser:', currentUser);
                 console.log('currentRole:', currentRole);
+
+                // Check for public booking pages (accessible without login)
+                if (path.startsWith('/book/')) {
+                    const companyId = path.split('/book/')[1];
+                    if (companyId) {
+                        await renderPublicBooking({ root, companyId, db });
+                        addSpaLinkHandlers();
+                        return;
+                    }
+                }
 
                 // Not logged in
                 if (!currentUser) {
@@ -226,6 +257,21 @@
                         return;
                     }
                     await renderDashboard({ root, db, signOut: handleSignOut, currentUser, currentRole, formatPhone, route });
+                    addSpaLinkHandlers();
+                    return;
+                } else if (currentRole === ROLES.CLIENT) {
+                    // Client role - show client dashboard with their bookings
+                    if (path === '/dashboard' || path === '/') {
+                        await renderClientDashboard({ root, db, signOut: handleSignOut, currentUser, currentRole, formatPhone, route });
+                        addSpaLinkHandlers();
+                        return;
+                    }
+                    if (path === '/settings') {
+                        await renderSettings({ root, db, signOut: handleSignOut, currentUser, currentRole, updateDoc, hasPermission, sendPasswordResetEmail, route });
+                        addSpaLinkHandlers();
+                        return;
+                    }
+                    await renderClientDashboard({ root, db, signOut: handleSignOut, currentUser, currentRole, formatPhone, route });
                     addSpaLinkHandlers();
                     return;
                 }

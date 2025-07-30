@@ -10,7 +10,7 @@ export async function renderSettings({ root, db, signOut, currentUser, currentRo
                 <div class="topbar">
                     <h1>Settings</h1>
                     <div class="user-box">
-                        <span>${currentUser?.email}</span>
+                        <span>${currentUser?.displayName || currentUser?.name || currentUser?.email}</span>
                         <button id="auth-btn" title="Sign out">Sign Out</button>
                     </div>
                 </div>
@@ -123,7 +123,7 @@ export async function renderSettings({ root, db, signOut, currentUser, currentRo
 
             try {
                 const { updateProfile } = await import("https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js");
-                const { doc, updateDoc } = await import("https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js");
+                const { doc, updateDoc, getDoc } = await import("https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js");
 
                 const newDisplayName = document.getElementById('displayName').value;
 
@@ -132,10 +132,23 @@ export async function renderSettings({ root, db, signOut, currentUser, currentRo
                     displayName: newDisplayName
                 });
 
-                // Update Firestore user document
+                // Update Firestore user document with both name fields
                 await updateDoc(doc(db, 'users', currentUser.uid), {
-                    name: newDisplayName
+                    name: newDisplayName,
+                    displayName: newDisplayName
                 });
+
+                // If user is a business owner, also update the company document
+                if (currentRole === 'owner') {
+                    const companyRef = doc(db, 'companies', currentUser.uid);
+                    const companyDoc = await getDoc(companyRef);
+
+                    if (companyDoc.exists()) {
+                        await updateDoc(companyRef, {
+                            ownerName: newDisplayName
+                        });
+                    }
+                }
 
                 closeModal(modal);
                 alert('Profile updated successfully!');

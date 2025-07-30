@@ -15,9 +15,14 @@ export function renderSidebar(currentRole) {
         links = [
             { href: ROUTES.DASHBOARD, label: 'Dashboard' },
             { href: ROUTES.COMPANIES, label: 'Companies' },
-            { href: ROUTES.USERS, label: 'Users' },
+            { href: ROUTES.USERS, label: 'Business Owners' },
             { href: ROUTES.SETTINGS, label: 'Settings' },
             { href: ROUTES.LANDING, label: 'Landing Page' }
+        ];
+    } else if (currentRole === ROLES.CLIENT) {
+        links = [
+            { href: ROUTES.DASHBOARD, label: 'My Bookings' },
+            { href: ROUTES.SETTINGS, label: 'Settings' }
         ];
     }
     return `

@@ -11,7 +11,7 @@ export async function renderServices({ root, db, signOut, currentUser, currentRo
                 <div class="topbar">
                     <h1>My Services</h1>
                     <div class="user-box">
-                        <span>${currentUser?.email}</span>
+                        <span>${currentUser?.displayName || currentUser?.name || currentUser?.email}</span>
                         <button id="auth-btn" title="Sign out">Sign Out</button>
                     </div>
                 </div>

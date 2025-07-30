@@ -11,7 +11,7 @@ export async function renderCompanies({ root, currentRole, currentUser, db, sign
                 <div class="topbar">
                     <h1>Companies</h1>
                     <div class="user-box">
-                        <span>${currentUser?.email}</span>
+                        <span>${currentUser?.displayName || currentUser?.name || currentUser?.email}</span>
                         <button id="auth-btn" title="Sign out">Sign Out</button>
                     </div>
                 </div>
@@ -92,6 +92,7 @@ export async function renderCompanies({ root, currentRole, currentUser, db, sign
                     <div style="display: flex; gap: 1rem; margin-top: 1rem; flex-wrap: wrap;">
                         <button onclick="editCompany('${companyId}')" class="btn btn-secondary">Edit</button>
                         <button onclick="manageServices('${companyId}')" class="btn">Manage Services</button>
+                        <button onclick="getBookingUrl('${companyId}', '${company.name}')" class="btn" style="background: #28a745;">Booking URL</button>
                         <button onclick="deleteCompany('${companyId}')" class="btn btn-error">Delete</button>
                     </div>
                 `;
@@ -111,13 +112,13 @@ export async function renderCompanies({ root, currentRole, currentUser, db, sign
                     <input type="text" id="companyName" required style="width: 100%; margin-bottom: 1rem; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
                     
                     <label>Owner Name:</label>
-                    <input type="text" id="ownerName" value="${currentUser?.displayName || ''}" required style="width: 100%; margin-bottom: 1rem; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
+                    <input type="text" id="ownerName" value="${currentUser?.displayName || currentUser?.name || ''}" required style="width: 100%; margin-bottom: 1rem; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
                     
                     <label>Owner Email:</label>
                     <input type="email" id="ownerEmail" value="${currentUser?.email || ''}" required style="width: 100%; margin-bottom: 1rem; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
                     
                     <label>Owner Phone:</label>
-                    <input type="tel" id="ownerPhone" style="width: 100%; margin-bottom: 1rem; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
+                    <input type="tel" id="ownerPhone" value="${currentUser?.phone || ''}" style="width: 100%; margin-bottom: 1rem; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
                     
                     <div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 2rem;">
                         <button type="button" onclick="window.closeModal(this.closest('.modal-overlay'))" class="btn btn-secondary">Cancel</button>
@@ -145,8 +146,15 @@ export async function renderCompanies({ root, currentRole, currentUser, db, sign
             };
 
             try {
-                const { doc, setDoc } = await import("https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js");
+                const { doc, setDoc, updateDoc } = await import("https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js");
+
                 await setDoc(doc(db, 'companies', currentUser.uid), companyData);
+
+                // Also update the user profile with business name
+                await updateDoc(doc(db, 'users', currentUser.uid), {
+                    business: companyData.name,
+                    phone: companyData.ownerPhone || currentUser?.phone || ''
+                });
 
                 closeModal(modal);
                 await loadCompanies();
@@ -209,7 +217,20 @@ export async function renderCompanies({ root, currentRole, currentUser, db, sign
                 };
 
                 try {
+                    const { updateDoc } = await import("https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js");
+
                     await updateDoc(doc(db, 'companies', companyId), updatedData);
+
+                    // If this is the current user's company, also update their user profile
+                    if (companyId === currentUser.uid) {
+                        await updateDoc(doc(db, 'users', currentUser.uid), {
+                            displayName: updatedData.ownerName,
+                            name: updatedData.ownerName,
+                            business: updatedData.name,
+                            phone: updatedData.ownerPhone
+                        });
+                    }
+
                     closeModal(modal);
                     await loadCompanies();
                     alert('Company updated successfully!');
@@ -364,5 +385,65 @@ export async function renderCompanies({ root, currentRole, currentUser, db, sign
                 }
             }
         });
+    };
+
+    // Function to get booking URL for any company
+    window.getBookingUrl = (companyId, companyName) => {
+        const bookingUrl = `${window.location.origin}/book/${companyId}`;
+
+        const modalContent = `
+            <div style="background: white; padding: 2rem; border-radius: 8px; width: 90%; max-width: 600px;">
+                <h2 style="margin-bottom: 1.5rem; color: #333;">Public Booking Website</h2>
+                <h3 style="margin-bottom: 1rem; color: #666;">${companyName}</h3>
+                
+                <div style="background: #f8f9fa; padding: 1.5rem; border-radius: 8px; margin-bottom: 1.5rem; border-left: 4px solid #28a745;">
+                    <p style="margin: 0 0 1rem 0; color: #666;">Public booking URL for this business:</p>
+                    <div style="background: white; padding: 1rem; border-radius: 4px; border: 1px solid #ddd; word-break: break-all; font-family: monospace;">
+                        ${bookingUrl}
+                    </div>
+                </div>
+                
+                <div style="display: flex; gap: 1rem; margin-bottom: 1.5rem;">
+                    <button onclick="copyUrl('${bookingUrl}')" class="btn" style="background: #007bff;">
+                        📋 Copy Link
+                    </button>
+                    <button onclick="openUrl('${bookingUrl}')" class="btn" style="background: #28a745;">
+                        🔗 Open Preview
+                    </button>
+                </div>
+                
+                <div style="display: flex; gap: 1rem; justify-content: flex-end;">
+                    <button onclick="window.closeModal(this.closest('.modal-overlay'))" class="btn btn-secondary">Close</button>
+                </div>
+            </div>
+        `;
+
+        showModal(modalContent);
+    };
+
+    // Helper functions for URL operations
+    window.copyUrl = async (url) => {
+        try {
+            await navigator.clipboard.writeText(url);
+            alert('URL copied to clipboard!');
+        } catch (error) {
+            // Fallback for browsers that don't support clipboard API
+            const textArea = document.createElement('textarea');
+            textArea.value = url;
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            try {
+                document.execCommand('copy');
+                alert('URL copied to clipboard!');
+            } catch (err) {
+                alert('Failed to copy URL. Please copy it manually.');
+            }
+            document.body.removeChild(textArea);
+        }
+    };
+
+    window.openUrl = (url) => {
+        window.open(url, '_blank');
     };
 }

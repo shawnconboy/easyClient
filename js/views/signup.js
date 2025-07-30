@@ -74,6 +74,7 @@ export function renderSignup({ root, auth, createUserWithEmailAndPassword, doc, 
                 // Create user document in Firestore
                 await setDoc(doc(db, 'users', user.uid), {
                     name: name,
+                    displayName: name, // Add both for consistency
                     email: email,
                     role: 'owner', // Default role - can be changed by admin
                     status: 'active',

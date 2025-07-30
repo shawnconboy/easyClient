@@ -15,4 +15,4 @@ export const ROUTES = {
     LANDING: '/landing'
 };
 
-export const BOOKING_STATUSES = ['scheduled', 'completed', 'cancelled'];
+export const BOOKING_STATUSES = ['pending', 'scheduled', 'completed', 'cancelled', 'no-show'];

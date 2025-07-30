@@ -12,7 +12,7 @@ export async function renderBookings({ root, db, signOut, currentUser, currentRo
                 <div class="topbar">
                     <h1>Bookings</h1>
                     <div class="user-box">
-                        <span>${currentUser?.email}</span>
+                        <span>${currentUser?.displayName || currentUser?.name || currentUser?.email}</span>
                         <button id="auth-btn" title="Sign out">Sign Out</button>
                     </div>
                 </div>
@@ -100,26 +100,39 @@ export async function renderBookings({ root, db, signOut, currentUser, currentRo
                 bookingCard.className = 'card';
 
                 const statusColor = {
+                    'pending': '#ffc107',
                     'scheduled': '#007bff',
                     'completed': '#28a745',
                     'cancelled': '#dc3545',
                     'no-show': '#ffc107'
                 };
 
+                const isPending = booking.status === 'pending';
+                const isFromPublic = booking.source === 'public_website';
+
                 bookingCard.innerHTML = `
-                    <h3>${booking.serviceName}</h3>
+                    ${isPending ? '<div style="background: #fff3cd; padding: 0.5rem; margin-bottom: 1rem; border-radius: 4px; border-left: 4px solid #ffc107; font-weight: bold;">⏳ PENDING APPROVAL</div>' : ''}
+                    <h3>${booking.serviceName} ${isFromPublic ? '🌐' : ''}</h3>
                     <div class="cardOwner">
                         <div>Client: ${booking.clientName}</div>
+                        ${booking.clientEmail ? `<div>Email: ${booking.clientEmail}</div>` : ''}
+                        ${booking.clientPhone ? `<div>Phone: ${formatPhone(booking.clientPhone)}</div>` : ''}
                         <div>Date: ${formatDate(booking.date)}</div>
                         <div>Time: ${formatTimeString12Hour(booking.startTime)} - ${formatTimeString12Hour(booking.endTime)}</div>
                         <div>Duration: ${booking.duration} minutes</div>
-                        <div>Price: $${booking.price}</div>
+                        <div>Price: $${Number(booking.price).toFixed(2)}</div>
                         <div style="color: ${statusColor[booking.status] || '#000'};">Status: ${booking.status}</div>
                         ${booking.notes ? `<div>Notes: ${booking.notes}</div>` : ''}
+                        ${isFromPublic ? '<div style="color: #666; font-style: italic;">Booked via public website</div>' : ''}
                     </div>
-                    <div style="display: flex; gap: 1rem; margin-top: 1rem;">
-                        <button onclick="window.toggleBookingComplete('${userCompanyId}', '${doc.id}', '${booking.status}')" class="btn ${booking.status === 'completed' ? 'btn-secondary' : 'btn-success'}">${booking.status === 'completed' ? 'Mark Incomplete' : 'Mark Complete'}</button>
-                        <button onclick="window.updateBookingStatus('${userCompanyId}', '${doc.id}', 'cancelled')" class="btn btn-error" ${booking.status === 'cancelled' ? 'disabled' : ''}>Cancel</button>
+                    <div style="display: flex; gap: 1rem; margin-top: 1rem; flex-wrap: wrap;">
+                        ${isPending ? `
+                            <button onclick="window.approvePendingBooking('${userCompanyId}', '${doc.id}')" class="btn" style="background: #28a745;">✓ Approve</button>
+                            <button onclick="window.declinePendingBooking('${userCompanyId}', '${doc.id}')" class="btn btn-error">✗ Decline</button>
+                        ` : `
+                            <button onclick="window.toggleBookingComplete('${userCompanyId}', '${doc.id}', '${booking.status}')" class="btn ${booking.status === 'completed' ? 'btn-secondary' : 'btn-success'}">${booking.status === 'completed' ? 'Mark Incomplete' : 'Mark Complete'}</button>
+                            <button onclick="window.updateBookingStatus('${userCompanyId}', '${doc.id}', 'cancelled')" class="btn btn-error" ${booking.status === 'cancelled' ? 'disabled' : ''}>Cancel</button>
+                        `}
                     </div>
                 `;
                 bookingsList.appendChild(bookingCard);
@@ -356,6 +369,16 @@ export async function renderBookings({ root, db, signOut, currentUser, currentRo
     window.toggleBookingComplete = async (companyId, bookingId, currentStatus) => {
         const newStatus = currentStatus === 'completed' ? 'scheduled' : 'completed';
         await performStatusUpdate(companyId, bookingId, newStatus);
+    };
+
+    // Function to approve pending bookings (from public website)
+    window.approvePendingBooking = async (companyId, bookingId) => {
+        await performStatusUpdate(companyId, bookingId, 'scheduled');
+    };
+
+    // Function to decline pending bookings (from public website)
+    window.declinePendingBooking = async (companyId, bookingId) => {
+        await performStatusUpdate(companyId, bookingId, 'cancelled');
     };
 
     async function performStatusUpdate(companyId, bookingId, newStatus) {

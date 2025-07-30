@@ -10,7 +10,7 @@ export async function renderDashboard({ root, db, signOut, currentUser, currentR
                 <div class="topbar">
                     <h1>Dashboard</h1>
                     <div class="user-box">
-                        <span>${currentUser?.email}</span>
+                        <span>${currentUser?.displayName || currentUser?.name || currentUser?.email}</span>
                         <button id="auth-btn" title="Sign out">Sign Out</button>
                     </div>
                 </div>
@@ -20,7 +20,8 @@ export async function renderDashboard({ root, db, signOut, currentUser, currentR
                             <h3>Welcome Back!</h3>
                             <p>Your CRM and booking management system is ready to go!</p>
                             <div class="cardOwner">
-                                <div>User: ${currentUser?.email}</div>
+                                <div>User: ${currentUser?.displayName || currentUser?.name || currentUser?.email}</div>
+                                <div>Email: ${currentUser?.email}</div>
                                 <div>Role: ${currentRole}</div>
                                 <div>Last Login: ${new Date().toLocaleDateString()}</div>
                             </div>
@@ -41,6 +42,7 @@ export async function renderDashboard({ root, db, signOut, currentUser, currentR
                                     <button onclick="window.route('/bookings')" class="btn">View Bookings</button>
                                     <button onclick="window.route('/companies')" class="btn">Company Settings</button>
                                     <button onclick="manageMyServices()" class="btn">Manage Services</button>
+                                    <button onclick="showMyBookingUrl()" class="btn" style="background: #28a745;">Get Public Booking Link</button>
                                 ` : ''}
                                 ${currentRole === ROLES.ADMIN ? `
                                     <button onclick="window.route('/companies')" class="btn">Manage Companies</button>
@@ -500,5 +502,77 @@ export async function renderDashboard({ root, db, signOut, currentUser, currentR
                 }
             }
         });
+    };
+
+    // Function to show the public booking URL
+    window.showMyBookingUrl = () => {
+        // Use the correct port (3000) where the server is actually running
+        const bookingUrl = `http://localhost:3000/book/${currentUser.uid}`;
+
+        const modalContent = `
+            <div style="background: white; padding: 2rem; border-radius: 8px; width: 90%; max-width: 600px;">
+                <h2 style="margin-bottom: 1.5rem; color: #333;">Your Public Booking Website</h2>
+                
+                <div style="background: #f8f9fa; padding: 1.5rem; border-radius: 8px; margin-bottom: 1.5rem; border-left: 4px solid #28a745;">
+                    <p style="margin: 0 0 1rem 0; color: #666;">Share this link with your clients so they can book appointments directly:</p>
+                    <div style="background: white; padding: 1rem; border-radius: 4px; border: 1px solid #ddd; word-break: break-all; font-family: monospace;">
+                        ${bookingUrl}
+                    </div>
+                </div>
+                
+                <div style="display: flex; gap: 1rem; margin-bottom: 1.5rem;">
+                    <button onclick="copyBookingUrl('${bookingUrl}')" class="btn" style="background: #007bff;">
+                        📋 Copy Link
+                    </button>
+                    <button onclick="openBookingUrl('${bookingUrl}')" class="btn" style="background: #28a745;">
+                        🔗 Open Preview
+                    </button>
+                </div>
+                
+                <div style="background: #e7f3ff; padding: 1rem; border-radius: 6px; margin-bottom: 1.5rem;">
+                    <h4 style="margin: 0 0 0.5rem 0; color: #0066cc;">💡 Tips for Success:</h4>
+                    <ul style="margin: 0; padding-left: 1.5rem; color: #333;">
+                        <li>Add this link to your business website, social media, and email signatures</li>
+                        <li>Make sure your services are set to "Active" so clients can book them</li>
+                        <li>Client booking requests will appear in your Bookings section with "pending" status</li>
+                        <li>You can approve or modify booking requests before confirming them</li>
+                    </ul>
+                </div>
+                
+                <div style="display: flex; gap: 1rem; justify-content: flex-end;">
+                    <button onclick="window.closeModal(this.closest('.modal-overlay'))" class="btn btn-secondary">Close</button>
+                </div>
+            </div>
+        `;
+
+        const { showModal } = window.modalFunctions || { showModal: window.showModal };
+        showModal(modalContent);
+    };
+
+    // Helper functions for the booking URL modal
+    window.copyBookingUrl = async (url) => {
+        try {
+            await navigator.clipboard.writeText(url);
+            alert('Booking URL copied to clipboard!');
+        } catch (error) {
+            console.error('Failed to copy URL:', error);
+            // Fallback for browsers that don't support clipboard API
+            const textArea = document.createElement('textarea');
+            textArea.value = url;
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            try {
+                document.execCommand('copy');
+                alert('Booking URL copied to clipboard!');
+            } catch (err) {
+                alert('Failed to copy URL. Please copy it manually.');
+            }
+            document.body.removeChild(textArea);
+        }
+    };
+
+    window.openBookingUrl = (url) => {
+        window.open(url, '_blank');
     };
 }
