@@ -1,0 +1,25 @@
+data model for easy client
+
+user
+    userID
+    name
+    email
+    password
+    role
+
+Business Owner
+    userID
+    businessID
+    business name
+    business address
+
+    services
+        name
+        price
+        timeToComplete
+        description
+
+    clients
+        userID
+        businessID
+        
